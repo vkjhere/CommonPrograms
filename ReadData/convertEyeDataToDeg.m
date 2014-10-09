@@ -1,6 +1,6 @@
 function [eyeDataDegX,eyeDataDegY] = convertEyeDataToDeg(eyeData,returnCellArray)
 
-if ~exist('returnCellArray','var')      returnCellArray=0;              end
+if ~exist('returnCellArray','var');      returnCellArray=0;             end
 
 N = length(eyeData);
 if returnCellArray

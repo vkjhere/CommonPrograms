@@ -8,7 +8,8 @@
 
 function makeDirectory(fn)
 
+fn=platformSpecificName(fn);
 if isdir(fn)==0
     disp(['Creating directory ',fn]);
-    mkdir(platformSpecificName(fn));
+    mkdir(fn);
 end

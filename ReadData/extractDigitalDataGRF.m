@@ -2,8 +2,8 @@
 
 function goodStimTimes = extractDigitalDataGRF(digitalEvents,digitalTimeStamps,folderExtract,ignoreTargetStimFlag,frameRate)
 
-if ~exist('ignoreTargetStimFlag','var')   ignoreTargetStimFlag=0;       end
-if ~exist('frameRate','var')              frameRate=60;                 end
+if ~exist('ignoreTargetStimFlag','var');   ignoreTargetStimFlag=0;      end
+if ~exist('frameRate','var');              frameRate=60;                end
 
 useSingleITC18Flag=1;
 
@@ -61,20 +61,20 @@ end
 
 % Write the digitalCodes
 makeDirectory(folderExtract);
-save([folderExtract 'digitalEvents.mat'],'digitalCodeInfo','digitalTimeStamps','digitalEvents');
+save(fullfile(folderExtract,'digitalEvents.mat'),'digitalCodeInfo','digitalTimeStamps','digitalEvents');
 
 %%%%%%%%%%%%%%%%%%%%%%% Get Stimulus results %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 readDigitalCodesGRF(folderExtract,frameRate); % writes stimResults and trialResults
 [goodStimNums,goodStimTimes] = getGoodStimNumsGRF(folderExtract,ignoreTargetStimFlag); % Good stimuli
 getDisplayCombinationsGRF(folderExtract,goodStimNums);
-save([folderExtract 'goodStimNums.mat'],'goodStimNums');
+save(fullfile(folderExtract,'goodStimNums.mat'),'goodStimNums');
 
 end
 
 % GRF Specific protocols
 function [stimResults,trialResults,trialEvents] = readDigitalCodesGRF(folderOut,frameRate)
 
-if ~exist('frameRate','var')              frameRate=60;                 end
+if ~exist('frameRate','var');              frameRate=60;                end
 kForceQuit=7;
 
 % Get the values of the following trial events for comparison with the dat
@@ -82,11 +82,9 @@ kForceQuit=7;
 trialEvents{1} = 'TS'; % Trial start
 trialEvents{2} = 'TE'; % Trial End
 
-folderOut = appendIfNotPresent(folderOut,'\');
-load([folderOut 'digitalEvents.mat']);
+load(fullfile(folderOut,'digitalEvents.mat'));
 
 allDigitalCodesInDec = [digitalCodeInfo.codeNumber];
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Find the times and values of the events in trialEvents
 
@@ -243,16 +241,15 @@ for i=1:numTrials
 end
 
 % Save in folderOut
-save([folderOut 'stimResults.mat'],'stimResults');
-save([folderOut 'trialResults.mat'],'trialEvents','trialResults');
+save(fullfile(folderOut,'stimResults.mat'),'stimResults');
+save(fullfile(folderOut,'trialResults.mat'),'trialEvents','trialResults');
 
 end
 function [goodStimNums,goodStimTimes] = getGoodStimNumsGRF(folderOut,ignoreTargetStimFlag)
 
-if ~exist('ignoreTargetStimFlag','var')       ignoreTargetStimFlag=0;   end
+if ~exist('ignoreTargetStimFlag','var');      ignoreTargetStimFlag=0;   end
 
-folderOut = appendIfNotPresent(folderOut,'\');
-load([folderOut 'stimResults.mat']);
+load(fullfile(folderOut,'stimResults.mat'));
 
 totalStims = length(stimResults.eotCodes);
 disp(['Number of trials: ' num2str(max(stimResults.trialNumber))]);
@@ -313,7 +310,7 @@ if ~ignoreTargetStimFlag
     validStimuliAfterTarget = find(stimPos>targetPos);
     if ~isempty(validStimuliAfterTarget)
         disp([num2str(length(validStimuliAfterTarget)) ' out of ' num2str(length(goodStimNums)) ' stimuli after target']);
-        save([folderOut 'validStimAfterTarget.mat'],'validStimuliAfterTarget');
+        save(fullfile(folderOut,'validStimAfterTarget.mat'),'validStimuliAfterTarget');
     end
     
     goodStimNums(validStimuliAfterTarget)=[];
@@ -323,8 +320,7 @@ goodStimTimes = stimResults.time(goodStimNums);
 end
 function parameterCombinations = getDisplayCombinationsGRF(folderOut,goodStimNums)
 
-folderOut = appendIfNotPresent(folderOut,'\');
-load([folderOut 'stimResults.mat']);
+load(fullfile(folderOut,'stimResults.mat'));
 
 % Five parameters are chosen:
 % 1. Azimuth
@@ -385,13 +381,13 @@ if ~isempty(aValsAll)
     disp(['Number of unique temporal freqs: ' num2str(tLen)]);
 
     % If more than one value, make another entry with all values
-    if (aLen > 1)           aLen=aLen+1;                    end
-    if (eLen > 1)           eLen=eLen+1;                    end
-    if (sLen > 1)           sLen=sLen+1;                    end
-    if (fLen > 1)           fLen=fLen+1;                    end
-    if (oLen > 1)           oLen=oLen+1;                    end
-    if (cLen > 1)           cLen=cLen+1;                    end
-    if (tLen > 1)           tLen=tLen+1;                    end
+    if (aLen > 1);           aLen=aLen+1;                    end
+    if (eLen > 1);           eLen=eLen+1;                    end
+    if (sLen > 1);           sLen=sLen+1;                    end
+    if (fLen > 1);           fLen=fLen+1;                    end
+    if (oLen > 1);           oLen=oLen+1;                    end
+    if (cLen > 1);           cLen=cLen+1;                    end
+    if (tLen > 1);           tLen=tLen+1;                    end
 
     allPos = 1:length(goodStimNums);
     disp(['total combinations: ' num2str((aLen)*(eLen)*(sLen)*(fLen)*(oLen)*(cLen)*(tLen))]);
@@ -452,7 +448,7 @@ if ~isempty(aValsAll)
                                 aesfoPos = intersect(aesfPos,oPos);
                                 aesfocPos = intersect(aesfoPos,cPos);
                                 aesfoctPos = intersect(aesfocPos,tPos);
-                                parameterCombinations{a,e,s,f,o,c,t} = aesfoctPos; %#ok<AGROW>
+                                parameterCombinations{a,e,s,f,o,c,t} = aesfoctPos;
                             end
                         end
                     end
@@ -462,15 +458,15 @@ if ~isempty(aValsAll)
     end
 
     % save
-    save([folderOut 'parameterCombinations.mat'],'parameters','parameterCombinations', ...
+    save(fullfile(folderOut,'parameterCombinations.mat'),'parameters','parameterCombinations', ...
         'aValsUnique','eValsUnique','sValsUnique','fValsUnique','oValsUnique','cValsUnique','tValsUnique');
 
 end
 end
 function outNum = convertUnits(num,f,useSingleITC18Flag)
 
-if ~exist('f','var')                        f=1;                        end
-if ~exist('useSingleITC18Flag','var')       useSingleITC18Flag=1;       end
+if ~exist('f','var');                       f=1;                        end
+if ~exist('useSingleITC18Flag','var');      useSingleITC18Flag=1;       end
 
 for i=1:length(num)
     if num(i) > 16384

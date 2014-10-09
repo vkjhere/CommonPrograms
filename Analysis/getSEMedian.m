@@ -3,7 +3,7 @@
 
 function [se,bs] = getSEMedian(X,N)
 
-if ~exist('N','var')                   N=length(X);                     end
+if ~exist('N','var');                   N=length(X);                    end
 
 bs = bootstrp(N,@median,X);
 se = std(bs);

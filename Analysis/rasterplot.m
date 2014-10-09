@@ -1,10 +1,9 @@
 % rasterplot(X) displays the raster. 
 
 % The cell array X contains the spike times.
-% trialNums: optional variable that denotes the trial number of X -
-% default: 1:length(X)
-% colorName - color of the raster
-% d
+% trialNums: optional variable that denotes the trial number of X; default: 1:length(X)
+% colorName - color of the raster plot.
+% d - length of the spike. Default: 1
 
 function rasterplot(X,trialNums,colorName,d)
 

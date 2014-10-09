@@ -14,14 +14,13 @@
 
 % The additive constant D is ignored if length(params) == 6
 
-% Added optional parameter numStimuli
-% This scales the computation of diffOut
+% Added optional parameter numStimuli: this scales the computation of diffOut
 
 function [diffOut,outVals,boundaryX,boundaryY] = gauss2D(params,aVals,eVals,rfVals,numStimuli)
 
-if ~exist('rfVals','var')           rfVals=[];                      end
-if ~exist('aVals','var')            aVals=[];                       end
-if ~exist('numStimuli','var')       numStimuli=[];                  end
+if ~exist('rfVals','var');              rfVals=[];                      end
+if ~exist('aVals','var');               aVals=[];                       end
+if ~exist('numStimuli','var');          numStimuli=[];                  end
 
 x0 = params(1); y0 = params(2);
 sx  = params(3); sy  = params(4);
@@ -37,6 +36,7 @@ end
 if isempty(aVals)
     outVals=[];
 else
+    outVals = zeros(length(eVals),length(aVals));
     for e=1:length(eVals)
         for a=1:length(aVals)
             xg = (aVals(a)-x0)*cos(theta) - (eVals(e)-y0)*sin(theta);
@@ -45,12 +45,10 @@ else
             outVals(e,a) = C*exp(-(1/2)*(xg^2/sx^2+yg^2/sy^2))+D;
         end
     end
-    
 end
 
 % Generate the "Boundary", which are the (i,j) values at which
 % outVals(i,j)=exp(-1/2);
-
 
 xVals = -sx:sx/100:sx;
 yVals = sy*sqrt(1-(xVals/sx).^2);
@@ -66,7 +64,6 @@ boundaryY2 = y0 - xVals*sin(theta) + yVals*cos(theta);
 
 boundaryX = [boundaryX1 boundaryX2];
 boundaryY = [boundaryY1 boundaryY2];
-
 
 if isempty(rfVals)
     diffOut=[];

@@ -7,48 +7,42 @@
 % 5. saveEyeDataInDegSRC, saveEyeDataInDeg (GRF suffix added),
 % saveEyeDataStimPosGRF and getEyeDataStimPosGRF
 
-function saveLLData(monkeyName,expDate,protocolName,folderSourceString,gridType,type)
+function saveLLData(subjectName,expDate,protocolName,folderSourceString,gridType,type)
 
 FsEye=200;
 eyeRangeMS{1} = [-320 320]; timePeriodMS{1} = [-500   500]; maxStimPos{1} = 20;
 eyeRangeMS{2} = [-480 800]; timePeriodMS{2} = [-1000 1000]; maxStimPos{2} = 10;
 
-folderName    = [folderSourceString 'data\' monkeyName '\' gridType '\' expDate '\' protocolName '\'];
-folderExtract = [folderName 'extractedData'];
+folderName    = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName);
+folderExtract = fullfile(folderName,'extractedData');
 makeDirectory(folderExtract);
 
 if strncmpi(protocolName,'SRC',3) % SRC
-    [LL,targetInfo,psyInfo,reactInfo] = getStimResultsLLSRC(monkeyName,expDate,protocolName,folderSourceString); %#ok<*ASGLU,*NASGU>
-    save([folderExtract '\LL.mat'],'LL','targetInfo','psyInfo','reactInfo');
+    [LL,targetInfo,psyInfo,reactInfo] = getStimResultsLLSRC(subjectName,expDate,protocolName,folderSourceString); %#ok<*ASGLU,*NASGU>
+    save(fullfile(folderExtract,'LL.mat'),'LL','targetInfo','psyInfo','reactInfo');
     
-    [allTrials,goodTrials,stimData,eyeData,eyeRangeMS] = getEyePositionAndBehavioralDataSRC(monkeyName,expDate,protocolName,folderSourceString,eyeRangeMS{type},FsEye);
-    save([folderExtract '\BehaviorData.mat'],'allTrials','goodTrials','stimData');
-    save([folderExtract '\EyeData.mat'],'eyeData','eyeRangeMS');
+    [allTrials,goodTrials,stimData,eyeData,eyeRangeMS] = getEyePositionAndBehavioralDataSRC(subjectName,expDate,protocolName,folderSourceString,eyeRangeMS{type},FsEye);
+    save(fullfile(folderExtract,'BehaviorData.mat'),'allTrials','goodTrials','stimData');
+    save(fullfile(folderExtract,'EyeData.mat'),'eyeData','eyeRangeMS');
     
-    saveEyeDataInDegSRC(monkeyName,expDate,protocolName,folderSourceString,gridType);
+    saveEyeDataInDegSRC(subjectName,expDate,protocolName,folderSourceString,gridType);
 else
-    LL = getStimResultsLLGRF(monkeyName,expDate,protocolName,folderSourceString);
-    save([folderExtract '\LL.mat'],'LL');
+    LL = getStimResultsLLGRF(subjectName,expDate,protocolName,folderSourceString);
+    save(fullfile(folderExtract,'LL.mat'),'LL');
 
-    [allTrials,goodTrials,stimData,eyeData,eyeRangeMS] = getEyePositionAndBehavioralDataGRF(monkeyName,expDate,protocolName,folderSourceString,eyeRangeMS{type},FsEye);
-    save([folderExtract '\BehaviorData.mat'],'allTrials','goodTrials','stimData');
-    save([folderExtract '\EyeData.mat'],'eyeData','eyeRangeMS');
+    [allTrials,goodTrials,stimData,eyeData,eyeRangeMS] = getEyePositionAndBehavioralDataGRF(subjectName,expDate,protocolName,folderSourceString,eyeRangeMS{type},FsEye);
+    save(fullfile(folderExtract,'BehaviorData.mat'),'allTrials','goodTrials','stimData');
+    save(fullfile(folderExtract,'EyeData.mat'),'eyeData','eyeRangeMS');
     
-    saveEyeDataInDegGRF(monkeyName,expDate,protocolName,folderSourceString,gridType,timePeriodMS{type},FsEye,maxStimPos{type});
+    saveEyeDataInDegGRF(subjectName,expDate,protocolName,folderSourceString,gridType,timePeriodMS{type},FsEye,maxStimPos{type});
 end
 end
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [LL,targetInfo,psyInfo,reactInfo] = getStimResultsLLSRC(monkeyName,expDate,protocolName,folderSourceString)
+function [LL,targetInfo,psyInfo,reactInfo] = getStimResultsLLSRC(subjectName,expDate,protocolName,folderSourceString)
 
 frameISIinMS=10;
 
-monkeyName = removeIfPresent(monkeyName,'\');
-expDate    = removeIfPresent(expDate,'\');
-protocolName = removeIfPresent(protocolName,'\');
-folderSourceString = appendIfNotPresent(folderSourceString,'\');
-
-datFileName = [folderSourceString 'data\rawData\' monkeyName expDate '\' monkeyName expDate protocolName '.dat'];
+datFileName = fullfile(folderSourceString,'data','rawData',[subjectName expDate],[subjectName expDate protocolName '.dat']);
 
 % Get Lablib data
 header = readLLFile('i',datFileName);
@@ -173,14 +167,9 @@ LL.targetTemporalFreqIndex = targetTemporalFreqIndex;
 
 LL.startTime = startTime/1000; % in seconds
 end
-function LL = getStimResultsLLGRF(monkeyName,expDate,protocolName,folderSourceString)
+function LL = getStimResultsLLGRF(subjectName,expDate,protocolName,folderSourceString)
 
-monkeyName = removeIfPresent(monkeyName,'\');
-expDate    = removeIfPresent(expDate,'\');
-protocolName = removeIfPresent(protocolName,'\');
-folderSourceString = appendIfNotPresent(folderSourceString,'\');
-
-datFileName = [folderSourceString 'data\rawData\' monkeyName expDate '\' monkeyName expDate protocolName '.dat'];
+datFileName = fullfile(folderSourceString,'data','rawData',[subjectName expDate],[subjectName expDate protocolName '.dat']);
 
 % Get Lablib data
 header = readLLFile('i',datFileName);
@@ -279,19 +268,13 @@ LL.myEotCode = myEotCode;
 LL.startTime = startTime/1000; % in seconds
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [allTrials,goodTrials,stimData,eyeData,eyeRangeMS] = getEyePositionAndBehavioralDataSRC(monkeyName,expDate,protocolName,folderSourceString,eyeRangeMS,Fs)
+function [allTrials,goodTrials,stimData,eyeData,eyeRangeMS] = getEyePositionAndBehavioralDataSRC(subjectName,expDate,protocolName,folderSourceString,eyeRangeMS,Fs)
 
-if ~exist('eyeRangeMS','var')           eyeRangeMS = [-480 800];        end    % ms
-if ~exist('Fs','var')                   Fs = 200;                       end % Eye position sampled at 200 Hz.
+if ~exist('eyeRangeMS','var');           eyeRangeMS = [-480 800];       end    % ms
+if ~exist('Fs','var');                   Fs = 200;                      end % Eye position sampled at 200 Hz.
 
 eyeRangePos = eyeRangeMS*Fs/1000;
-
-monkeyName = removeIfPresent(monkeyName,'\');
-expDate    = removeIfPresent(expDate,'\');
-protocolName = removeIfPresent(protocolName,'\');
-folderSourceString = appendIfNotPresent(folderSourceString,'\');
-
-datFileName = [folderSourceString 'data\rawData\' monkeyName expDate '\' monkeyName expDate protocolName '.dat'];
+datFileName = fullfile(folderSourceString,'data','rawData',[subjectName expDate],[subjectName expDate protocolName '.dat']);
 
 % Get Lablib data
 header = readLLFile('i',datFileName);
@@ -373,21 +356,14 @@ for i=1:numTrials
     end
 end
 end
-function [allTrials,goodTrials,stimData,eyeData,eyeRangeMS] = getEyePositionAndBehavioralDataGRF(monkeyName,expDate,protocolName,folderSourceString,eyeRangeMS,Fs)
+function [allTrials,goodTrials,stimData,eyeData,eyeRangeMS] = getEyePositionAndBehavioralDataGRF(subjectName,expDate,protocolName,folderSourceString,eyeRangeMS,Fs)
 
-if ~exist('eyeRangeMS','var')           eyeRangeMS = [-480 800];        end    % ms
-if ~exist('Fs','var')                   Fs = 200;                       end % Eye position sampled at 200 Hz.
+if ~exist('eyeRangeMS','var');          eyeRangeMS = [-480 800];        end    % ms
+if ~exist('Fs','var');                  Fs = 200;                       end % Eye position sampled at 200 Hz.
 
 eyeRangePos = eyeRangeMS*Fs/1000;
 
-if ~exist('folderSourceString','var')   folderSourceString ='F:\';       end
-
-monkeyName = removeIfPresent(monkeyName,'\');
-expDate    = removeIfPresent(expDate,'\');
-protocolName = removeIfPresent(protocolName,'\');
-folderSourceString = appendIfNotPresent(folderSourceString,'\');
-
-datFileName = [folderSourceString 'data\rawData\' monkeyName expDate '\' monkeyName expDate protocolName '.dat'];
+datFileName = fullfile(folderSourceString,'data','rawData',[subjectName expDate],[subjectName expDate protocolName '.dat']);
 
 % Get Lablib data
 header = readLLFile('i',datFileName);
@@ -471,11 +447,11 @@ for i=1:numTrials
 end
 end
 % Additional analysis
-function saveEyeDataInDegSRC(monkeyName,expDate,protocolName,folderSourceString,gridType)
+function saveEyeDataInDegSRC(subjectName,expDate,protocolName,folderSourceString,gridType)
 % The difference between saveEyeDataInDeg and saveEyeDataInDegSRC is that
 % the frontPad stimuli are also saved in SRC.
 
-folderName    = [folderSourceString 'data\' monkeyName '\' gridType '\' expDate '\' protocolName '\'];
+folderName    = [folderSourceString 'data\' subjectName '\' gridType '\' expDate '\' protocolName '\'];
 folderExtract = [folderName 'extractedData\'];
 
 clear eyeData 
@@ -495,25 +471,25 @@ save([folderSave 'eyeDataDeg.mat'],'eyeDataDegX','eyeDataDegY');
 save([folderSave 'eyeSpeed.mat'],'eyeSpeedX','eyeSpeedY');
 
 end
-function saveEyeDataInDegGRF(monkeyName,expDate,protocolName,folderSourceString,gridType,timePeriodMS,FsEye,maxStimPos)
+function saveEyeDataInDegGRF(subjectName,expDate,protocolName,folderSourceString,gridType,timePeriodMS,FsEye,maxStimPos)
 
-folderName    = [folderSourceString 'data\' monkeyName '\' gridType '\' expDate '\' protocolName '\'];
-folderExtract = [folderName 'extractedData\'];
+folderName    = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName);
+folderExtract = fullfile(folderName,'extractedData');
 
 clear eyeData 
-load([folderExtract 'EyeData.mat']);
+load(fullfile(folderExtract,'EyeData.mat'));
 
 clear goodStimNums
-load([folderExtract 'goodStimNums.mat']);
+load(fullfile(folderExtract,'goodStimNums.mat'));
 
-if exist([folderExtract 'validStimAfterTarget.mat'],'file')
-    load([folderExtract 'validStimAfterTarget.mat']);
+if exist(fullfile(folderExtract,'validStimAfterTarget.mat'),'file')
+    load(fullfile(folderExtract,'validStimAfterTarget.mat'));
     disp(['Removing ' num2str(length(validStimuliAfterTarget)) ' stimuli from goodStimNums']);
     goodStimNums(validStimuliAfterTarget)=[];
 end
 
 clear stimResults
-load([folderExtract 'stimResults.mat']);
+load(fullfile(folderExtract,'stimResults.mat'));
 
 goodStimPos = stimResults.stimPosition(goodStimNums);
 
@@ -521,9 +497,9 @@ goodStimPos = stimResults.stimPosition(goodStimNums);
 useTheseStims = find(goodStimPos>1);
 
 [eyeDataDegX,eyeDataDegY] = convertEyeDataToDeg(eyeData(useTheseStims),1);
-folderSave = [folderName 'segmentedData\eyeData\'];
+folderSave = fullfile(folderName,'segmentedData','eyeData');
 makeDirectory(folderSave);
-save([folderSave 'eyeDataDeg.mat'],'eyeDataDegX','eyeDataDegY');
+save(fullfile(folderSave,'eyeDataDeg.mat'),'eyeDataDegX','eyeDataDegY');
 
 % lengthEyeSignal = size(eyeDataDegX,2);
 % eyeSpeedX = [eyeDataDegX(:,2:lengthEyeSignal)-eyeDataDegX(:,1:lengthEyeSignal-1) zeros(size(eyeDataDegX,1),1)];
@@ -531,14 +507,13 @@ save([folderSave 'eyeDataDeg.mat'],'eyeDataDegX','eyeDataDegY');
 % save([folderSave 'eyeSpeed.mat'],'eyeSpeedX','eyeSpeedY');
 
 % More data saved for GRF protocol
-[eyeXAllPos,eyeYAllPos,xs] = getEyeDataStimPosGRF(monkeyName,expDate,protocolName,folderSourceString,timePeriodMS,FsEye,maxStimPos);
-save([folderSave 'EyeDataStimPos.mat'],'eyeXAllPos','eyeYAllPos','xs','timePeriodMS');
+[eyeXAllPos,eyeYAllPos,xs] = getEyeDataStimPosGRF(subjectName,expDate,protocolName,folderSourceString,timePeriodMS,FsEye,maxStimPos);
+save(fullfile(folderSave,'EyeDataStimPos.mat'),'eyeXAllPos','eyeYAllPos','xs','timePeriodMS');
 end
-function [eyeXAllPos,eyeYAllPos,xs,timePeriodMS] = getEyeDataStimPosGRF(monkeyName,expDate,protocolName,folderSourceString,timePeriodMS,Fs,maxStimPos)
+function [eyeXAllPos,eyeYAllPos,xs,timePeriodMS] = getEyeDataStimPosGRF(subjectName,expDate,protocolName,folderSourceString,timePeriodMS,Fs,maxStimPos)
 
 intervalTimeMS=1000/Fs;
-
-datFileName = [folderSourceString 'data\rawData\' monkeyName expDate '\' monkeyName expDate protocolName '.dat'];
+datFileName = fullfile(folderSourceString,'data','rawData',[subjectName expDate],[subjectName expDate protocolName '.dat']);
 
 % Get Lablib data
 header = readLLFile('i',datFileName);

@@ -6,7 +6,7 @@
 
 function codeExistsFlag = digitalCodeDictionary(str)
 
-if ~exist('str','var')    str='';     end
+if ~exist('str','var');                     str='';                     end
 
 codeList = [...
     'AL';

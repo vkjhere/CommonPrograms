@@ -26,7 +26,7 @@ for i=1:length(staTimeLims)
     if (timeLims(1)+staLen(1) < timeVals(1)) || (timeLims(2)+staLen(2) > timeVals(end))
         error('Time limit out of range');
     end 
-    [staVals{i},numberOfSpikes(i)] = getSTAsingleTimeLim(spikeData,analogData,timeLims,timeVals,staLen,Fs);
+    [staVals{i},numberOfSpikes(i)] = getSTAsingleTimeLim(spikeData,analogData,timeLims,timeVals,staLen,Fs); %#ok<AGROW>
 end
 xsSTA = staLen(1):1/Fs:staLen(2);
 end
@@ -52,7 +52,7 @@ for i=1:numStim
         signal=analogData(i,:);
         
         for j=1:length(goodSpk)
-            pos = max(find(timeVals<goodSpk(j)));
+            pos = find(timeVals<goodSpk(j),1,'last');
             numberOfSpikes=numberOfSpikes+1;
             staVals = staVals+signal(pos+lim1:pos+lim2);
         end

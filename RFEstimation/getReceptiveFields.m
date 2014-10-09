@@ -1,14 +1,14 @@
-function getReceptiveFields(monkeyName,expDate,protocolName,folderSourceString,gridType,measure,removeAvgRef,goodElectrodes)
+function getReceptiveFields(subjectName,expDate,protocolName,folderSourceString,gridType,measure,removeAvgRef,goodElectrodes)
 
-if ~exist('removeAvgRef','var')         removeAvgRef=0;                 end
+if ~exist('removeAvgRef','var');         removeAvgRef=0;                 end
 
 % foldername
-folderName = [folderSourceString 'data\' monkeyName '\' gridType '\' expDate '\' protocolName '\'];
-folderExtract = [folderName 'extractedData\'];
-folderSegment = [folderName 'segmentedData\'];
-folderOut = [folderName 'RFMeasures\' measure '\'];
+folderName = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName);
+folderExtract = fullfile(folderName,'extractedData');
+folderSegment = fullfile(folderName,'segmentedData');
+folderOut = fullfile(folderName,'RFMeasures',measure);
 
-load([folderExtract 'parameterCombinations.mat']);
+load(fullfile(folderExtract,'parameterCombinations.mat'));
 
 if removeAvgRef
     fileTag = 'AvgRefRemoved';
@@ -17,24 +17,23 @@ else
 end
 
 if strcmpi(measure,'LFP') || strcmpi(measure,'CSD') || strcmpi(measure,'Spikes')
-    load([folderOut 'rfValues' fileTag '.mat']);
+    load(fullfile(folderOut,['rfValues' fileTag '.mat']));
     numTimeRanges = size(rfValsRMS,4); %#ok<*NODEF>
 elseif strcmpi(measure,'Energy')
-    load([folderOut 'rfValues' num2str(goodElectrodes(1)) fileTag '.mat']);
+    load(fullfile(folderOut,['rfValues' num2str(goodElectrodes(1)) fileTag '.mat']));
     numTimeRanges = size(rfValsRMS,3);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if strcmpi(measure,'LFP') || strcmpi(measure,'CSD')
-    load([folderSegment 'LFP\lfpInfo']);
+    load(fullfile(folderSegment,'LFP','lfpInfo.mat'));
     channelNumbers = analogChannelsStored;
 elseif strcmpi(measure,'Spikes')
-    load([folderSegment 'Spikes\spikeInfo']);
+    load(fullfile(folderSegment,'Spikes','spikeInfo.mat'));
     channelNumbers = neuralChannelsStored;
 elseif strcmpi(measure,'Energy')
     channelNumbers = goodElectrodes;
 end
-
 
 if strcmpi(measure,'LFP') || strcmpi(measure,'CSD') || strcmpi(measure,'Spikes')
     for poolingOption=1:3
@@ -67,10 +66,10 @@ if strcmpi(measure,'LFP') || strcmpi(measure,'CSD') || strcmpi(measure,'Spikes')
         end
         
         if strcmp(measure,'LFP') || strcmp(measure,'CSD')
-            save([folderOut 'rfParams' fileTag num2str(poolingOption) '.mat'],'paramsRMS','paramsMax','paramsPower', ...
+            save(fullfile(folderOut,['rfParams' fileTag num2str(poolingOption) '.mat']),'paramsRMS','paramsMax','paramsPower', ...
                 'paramsRMSScaled','paramsMaxScaled','paramsPowerScaled','aValsUnique','eValsUnique');
         elseif strcmp(measure,'Spikes')
-            save([folderOut 'rfParams' num2str(poolingOption) '.mat'],'paramsRMS','paramsMax','paramsMean', ...
+            save(fullfile(folderOut,['rfParams' num2str(poolingOption) '.mat']),'paramsRMS','paramsMax','paramsMean', ...
                 'paramsRMSScaled','paramsMaxScaled','paramsMeanScaled','aValsUnique','eValsUnique');
         end
     end
@@ -80,10 +79,9 @@ elseif strcmpi(measure,'Energy')
     numFreqPos = length(downsampledFreqVals);
     
     for i=1:length(channelNumbers)
-        
         channelNumber = channelNumbers(i);
         clear rfValsRMS rfValsMax rfValsPower
-        load([folderOut 'rfValues' num2str(channelNumber) fileTag '.mat']);
+        load(fullfile(folderOut,['rfValues' num2str(channelNumber) fileTag '.mat']));
  
         for poolingOption=1:3
             disp([channelNumber poolingOption]);
@@ -107,9 +105,8 @@ elseif strcmpi(measure,'Energy')
                 end
             end
             
-            save([folderOut 'rfParams' num2str(channelNumber) fileTag '_' num2str(poolingOption) '.mat'],'paramsRMS','paramsMax','paramsPower', ...
+            save(fullfile(folderOut,['rfParams' num2str(channelNumber) fileTag '_' num2str(poolingOption) '.mat']),'paramsRMS','paramsMax','paramsPower', ...
                 'paramsRMSScaled','paramsMaxScaled','paramsPowerScaled','aValsUnique','eValsUnique','downsampledFreqVals');
-            
         end
     end
 end

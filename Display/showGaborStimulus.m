@@ -6,9 +6,9 @@
 % gaborStim.spatialFreqCPD=1;
 % gaborStim.orientationDeg=0;
 
-function showGaborStimulus(gaborStim,aPoints,ePoints,plothandle)
+function showGaborStimulus(gaborStim,aPoints,ePoints,plotHandle)
 
-if ~exist('plotHandle','var')       plotHandle=gca;         end
+if ~exist('plotHandle','var');              plotHandle=gca;             end
 axes(plotHandle)
 gaborPatch = makeGaborStimulus(gaborStim,aPoints,ePoints);
 sc(gaborPatch);

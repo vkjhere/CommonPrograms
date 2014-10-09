@@ -1,8 +1,8 @@
 function [plotHandle,colorNames,electrodeArray,colorRows,colorCols] = showElectrodeLocationsInColor(gridPosition,plotHandle,holdOnState,hideElectrodeNums,startRow,gridType)
 
-if ~exist('hideElectrodeNums','var')    hideElectrodeNums=0;            end
-if ~exist('startRow','var')             startRow=5;                     end
-if ~exist('gridType','var')             gridType = 'Microelectrode';    end
+if ~exist('hideElectrodeNums','var');    hideElectrodeNums=0;           end
+if ~exist('startRow','var');             startRow=5;                    end
+if ~exist('gridType','var');             gridType = 'Microelectrode';   end
 
 if strcmpi(gridType,'ECoG')
     numRows=8;numCols=10;
@@ -22,7 +22,7 @@ if ~holdOnState
     cla(plotHandle);
 end
 
-axes(plotHandle) %#ok<MAXES>
+axes(plotHandle);
 dX = 1/numCols;
 dY = 1/numRows;
 

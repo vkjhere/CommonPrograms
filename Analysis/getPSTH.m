@@ -10,13 +10,14 @@
 
 % Including the smoothing function.
 % 11/6/14: Name changed from psth_SR to getPSTH
+% 1/10/14: Tmin, Tmax replaced by a single variable tRange
 
-function [H,timeVals] = getPSTH(X,d,Tmin,Tmax,smoothSigmaMs)
+function [H,timeVals] = getPSTH(X,d,tRange,smoothSigmaMs)
 
-if ~exist('smoothSigmaMs','var')      smoothSigmaMs=[];                     end
+if ~exist('smoothSigmaMs','var');      smoothSigmaMs=[];                end
 
 if nargin==1
-    d = 0.001; % 1ms
+    d = 0.001; % 1 ms
 else
     d = d/1000; %converting in s
 end
@@ -25,7 +26,7 @@ spk = [];
 numTrials = length(X);
 
 for i=1:numTrials
-    [A B] = size(X{i});
+    [A,B] = size(X{i});
     if A == 1
         spk = cat(2,spk,X{i}); % row vector
     elseif B == 1
@@ -33,14 +34,14 @@ for i=1:numTrials
     end
 end
 
-N = (Tmax-Tmin)/d;  % number of bins
+N = diff(tRange)/d;  % number of bins
 
 for i=1:N
-    Htmp(i) = length(find(spk < Tmin+i*d)); %#ok<*AGROW>
-    timeVals(i) = Tmin+i*d-d/2;
+    Htmp(i) = length(find(spk < tRange(1)+i*d)); %#ok<*AGROW>
+    timeVals(i) = tRange(1)+i*d-d/2;
 end
 
-Htmp0 = length(find(spk<Tmin));
+Htmp0 = length(find(spk<tRange(1)));
 H = cat(2,Htmp(1)-Htmp0,diff(Htmp));
 
 % Scale
@@ -55,8 +56,8 @@ end
 
 function smoothData = gaussSmooth(data,sigma,windowLen)
 
-if ~exist('sigma','var')            sigma = 1;                          end
-if ~exist('windowLen','var')        windowLen = 11;                     end
+if ~exist('sigma','var');            sigma = 1;                         end
+if ~exist('windowLen','var');        windowLen = 11;                    end
 
 window = exp(-0.5*(((1:windowLen) - (windowLen+1)/2)/sigma).^2);
 window = window/sum(window);

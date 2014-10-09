@@ -4,52 +4,44 @@
 % 3. Spike data
 % 4. Segments
 
-% Each data file is characterized by four parameters - monkeyName, expDate,
+% Each data file is characterized by four parameters - subjectName, expDate,
 % protocolName and gridType.
 
 % We assume that the raw data is initially stored in
-% folderSourceString\data\rawData\{monkeyName}{expDate}\
+% folderSourceString\data\rawData\{subjectName}{expDate}\
 
-function extractAllData(monkeyName,expDate,protocolName,folderSourceString,gridType,timeStartFromBaseLine,deltaT,electrodesToStore)
+function extractAllData(subjectName,expDate,protocolName,folderSourceString,gridType,timeStartFromBaseLine,deltaT,electrodesToStore)
 
-if ~exist('folderSourceString','var')   folderSourceString ='F:\';      end
-if ~exist('timeStartFromBaseLine','var') timeStartFromBaseLine= -0.55;  end
-if ~exist('deltaT','var')                deltaT = 1.024;                end
-
-folderSourceString = appendIfNotPresent(folderSourceString,'\');
+if ~exist('folderSourceString','var');   folderSourceString ='F:';       end
+if ~exist('timeStartFromBaseLine','var'); timeStartFromBaseLine= -0.55;  end
+if ~exist('deltaT','var');                deltaT = 1.024;                end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-fileName = [monkeyName expDate protocolName '.nev'];
-folderName0 = [folderSourceString 'data\' monkeyName '\'];
-makeDirectory(folderName0);
-folderName0 = [folderName0 gridType '\'];
-makeDirectory(folderName0);
-folderName1 = [folderName0 expDate '\'];
-makeDirectory(folderName1);
-folderName = [folderName1 protocolName '\'];
+fileName = [subjectName expDate protocolName '.nev'];
+folderName = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName);
 makeDirectory(folderName);
-
-folderIn = [folderSourceString 'data\rawData\' monkeyName expDate '\'];
-folderExtract = [folderName 'extractedData\'];
-folderSegment = [folderName 'segmentedData'];
+folderIn = fullfile(folderSourceString,'data','rawData',[subjectName expDate]);
+folderExtract = fullfile(folderName,'extractedData');
+folderSegment = fullfile(folderName,'segmentedData');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Read the NEV file
 
 % Load the appropriate DLL
-dllName = 'N:\programs\requiredResources\nsNEVLibrary64.dll';
+dllName = fullfile(removeIfPresent(fileparts(mfilename('fullpath')), ...
+fullfile('ProgramsMAP','CommonPrograms','ReadData')),'SoftwareMAP','NeuroShare','nsNEVLibrary64.dll');
+
 [nsresult] = ns_SetLibrary(dllName);
-if (nsresult ~= 0)      error('DLL was not found!');                    end
+if (nsresult ~= 0);      error('DLL was not found!');                   end
 
 % Load data file and display some info about the file open data file
-[nsresult, hFile] = ns_OpenFile([folderIn fileName]);
-if (nsresult ~= 0)      error('Data file did not open!');               end
+[nsresult, hFile] = ns_OpenFile(fullfile(folderIn,fileName));
+if (nsresult ~= 0);      error('Data file did not open!');              end
 
 % Get file information
 [nsresult, fileInfo] = ns_GetFileInfo(hFile);
 % Gives you entityCount, timeStampResolution and timeSpan
-if (nsresult ~= 0)      error('Data file information did not load!');   end
+if (nsresult ~= 0);      error('Data file information did not load!');  end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%% Digital Codes %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -91,7 +83,7 @@ if ~isempty(badDTPos)
 end
 
 goodStimTimes = extractDigitalDataGRF(digitalEvents,digitalTimeStamps,folderExtract,1);
-save([folderExtract 'NEVFileInfo.mat'], 'fileInfo', 'entityInfo');
+save(fullfile(folderExtract,'NEVFileInfo.mat'), 'fileInfo', 'entityInfo');
 
 %%%%%%%%%%%%%%%%%%%%% Save Analog and Spike Data %%%%%%%%%%%%%%%%%%%%%%%%%%
 Fs=2000;

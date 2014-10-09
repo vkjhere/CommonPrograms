@@ -1,9 +1,10 @@
 % measure: 'LFP' or 'Spikes'
 % timeRanges: a cell array of times - in seconds
-function getValuesForRFEstimation(monkeyName,expDate,protocolName,folderSourceString,gridType,measure,timeRanges,removeAvgRef,goodElectrodes)
 
-if ~exist('timeRanges','var')          timeRanges=[];                   end
-if ~exist('removeAvgRef','var')         removeAvgRef=0;                 end
+function getValuesForRFEstimation(subjectName,expDate,protocolName,folderSourceString,gridType,measure,timeRanges,removeAvgRef,goodElectrodes)
+
+if ~exist('timeRanges','var');          timeRanges=[];                   end
+if ~exist('removeAvgRef','var');         removeAvgRef=0;                 end
 
 stimPosGreaterThanOne=1;
 
@@ -14,19 +15,19 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % foldernames
-folderName = [folderSourceString 'data\' monkeyName '\' gridType '\' expDate '\' protocolName '\'];
-folderExtract = [folderName 'extractedData\'];
-folderSegment = [folderName 'segmentedData\'];
+folderName = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName);
+folderExtract = fullfile(folderName,'extractedData');
+folderSegment = fullfile(folderName,'segmentedData');
 
-folderOut1 = [folderName 'RFMeasures\'];
+folderOut1 = fullfile(folderName,'RFMeasures');
 makeDirectory(folderOut1);
-folderOut = [folderOut1 measure '\'];
+folderOut = fullfile(folderOut1,measure);
 makeDirectory(folderOut);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if removeAvgRef
     disp('Removing average reference');
-    load([folderSegment 'LFP\avgRef']);
+    load(fullfile(folderSegment,'LFP','avgRef'));
     avgRef = analogData;
     fileTag = 'AvgRefRemoved';
 else
@@ -34,31 +35,30 @@ else
 end
 
 % Load stimulus parameters, bad trials
-load([folderExtract 'parameterCombinations.mat']);
+load(fullfile(folderExtract,'parameterCombinations.mat'));
 aLength = length(aValsUnique);
 eLength = length(eValsUnique);
 
 numTimePeriods = length(timeRanges);
 
-load([folderSegment 'badTrials.mat']);
+load(fullfile(folderSegment,'badTrials.mat'));
 
 if strcmp(measure,'LFP')    % Case 1 - LFP analysis
-    
     % Get Time Ranges
-    load([folderSegment 'LFP\lfpInfo']);
+    load(fullfile(folderSegment,'LFP','lfpInfo.mat'));
     timePos = cell(1,numTimePeriods);
     for i=1:numTimePeriods
         timePos{i} = intersect(find(timeVals>=timeRanges{i}(1)),find(timeVals<timeRanges{i}(2)));
     end
     
-    stimPos = getGoodPos(monkeyName,expDate,protocolName,folderSourceString,gridType,stimPosGreaterThanOne);
+    stimPos = getGoodPos(subjectName,expDate,protocolName,folderSourceString,gridType,stimPosGreaterThanOne);
     
     for i=1:length(analogChannelsStored)
         channelNumber = analogChannelsStored(i);
         
         % Get LFP data
         clear signal analogData meanLFPData numStimuli
-        load([folderSegment 'LFP\elec' num2str(channelNumber)]);
+        load(fullfile(folderSegment,'LFP',['elec' num2str(channelNumber) '.mat']));
         if removeAvgRef
             analogData = analogData-avgRef;
         end
@@ -96,18 +96,18 @@ if strcmp(measure,'LFP')    % Case 1 - LFP analysis
         end
         
         % Save Mean LFP data
-        save([folderOut 'meanLFPDataChan' num2str(channelNumber) fileTag '.mat'],'meanLFPData','timeVals','numStimuli');
+        save(fullfile(folderOut,['meanLFPDataChan' num2str(channelNumber) fileTag '.mat']),'meanLFPData','timeVals','numStimuli');
     end
     
     % Save - numStimuli should be the same for all channels
-    save([folderOut 'rfValues' fileTag '.mat'],'rfValsRMS','rfValsMax','rfValsPower','numStimuli');
+    save(fullfile(folderOut,['rfValues' fileTag '.mat']),'rfValsRMS','rfValsMax','rfValsPower','numStimuli');
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
 elseif strcmp(measure,'Spikes')    % Case 2 - spike analysis
     
-    load([folderSegment 'LFP\lfpInfo']);  % to get timeVals
-    load([folderSegment 'Spikes\spikeInfo']);
-    stimPos = getGoodPos(monkeyName,expDate,protocolName,folderSourceString,gridType,stimPosGreaterThanOne);
+    load(fullfile(folderSegment,'LFP','lfpInfo.mat'));  % to get timeVals
+    load(fullfile(folderSegment,'Spikes','spikeInfo.mat'));
+    stimPos = getGoodPos(subjectName,expDate,protocolName,folderSourceString,gridType,stimPosGreaterThanOne);
     
     for i=1:length(neuralChannelsStored)
         channelNumber = neuralChannelsStored(i);
@@ -115,7 +115,7 @@ elseif strcmp(measure,'Spikes')    % Case 2 - spike analysis
         
         % Get Spike data
         clear spikeData neuralInfo
-        load([folderSegment 'Spikes\elec' num2str(channelNumber) '_SID' num2str(SID)]);
+        load(fullfile(folderSegment,'Spikes',['elec' num2str(channelNumber) '_SID' num2str(SID) '.mat']));
         
         for a=1:aLength
             for e=1:eLength
@@ -132,7 +132,7 @@ elseif strcmp(measure,'Spikes')    % Case 2 - spike analysis
                     numStimuli(e,a) = 0;
                 else
                     clear firingRate
-                    [firingRate,timeValsFR] = psth_SR(spikeData(goodPos),10,timeVals(1),timeVals(length(timeVals)));
+                    [firingRate,timeValsFR] = getPSTH(spikeData(goodPos),10,timeVals);
                     numStimuli(e,a) = length(goodPos);
                     meanSpikeData(e,a,:) = firingRate;
                     
@@ -151,30 +151,30 @@ elseif strcmp(measure,'Spikes')    % Case 2 - spike analysis
         end
         
         % Save Mean LFP data
-        save([folderOut 'meanSpikeDataChan' num2str(channelNumber) '_SID' num2str(SID) '.mat'],'meanSpikeData','timeValsFR','numStimuli');
+        save(fullfile(folderOut,['meanSpikeDataChan' num2str(channelNumber) '_SID' num2str(SID) '.mat']),'meanSpikeData','timeValsFR','numStimuli');
     end
     
     % Save - numStimuli should be the same for all channels
-    save([folderOut 'rfValues.mat'],'rfValsRMS','rfValsMax','rfValsMean','numStimuli');
+    save(fullfile(folderOut,'rfValues.mat'),'rfValsRMS','rfValsMax','rfValsMean','numStimuli');
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
 elseif strcmpi(measure,'CSD')    % Case 3 - CSD analysis (very similar to LFP analysis)
     
     % Get Time Ranges
-    load([folderSegment 'LFP\lfpInfo']);
+    load(fullfile(folderSegment,'LFP','lfpInfo.mat'));
     timePos = cell(1,numTimePeriods);
     for i=1:numTimePeriods
         timePos{i} = intersect(find(timeVals>=timeRanges{i}(1)),find(timeVals<timeRanges{i}(2)));
     end
     
-    stimPos = getGoodPos(monkeyName,expDate,protocolName,folderSourceString,gridType,stimPosGreaterThanOne);
+    stimPos = getGoodPos(subjectName,expDate,protocolName,folderSourceString,gridType,stimPosGreaterThanOne);
     
     for i=1:length(analogChannelsStored)
         channelNumber = analogChannelsStored(i);
         
         % Get CSD data
         clear signal csdData meanCSDData numStimuli
-        load([folderSegment 'CSD\elec' num2str(channelNumber)]);
+        load(fullfile(folderSegment,'CSD',['elec' num2str(channelNumber) '.mat']));
         if removeAvgRef
             csdData = csdData-avgRef;
         end
@@ -212,28 +212,28 @@ elseif strcmpi(measure,'CSD')    % Case 3 - CSD analysis (very similar to LFP an
         end
         
         % Save Mean LFP data
-        save([folderOut 'meanCSDDataChan' num2str(channelNumber) fileTag '.mat'],'meanCSDData','timeVals','numStimuli');
+        save(fullfile(folderOut,['meanCSDDataChan' num2str(channelNumber) fileTag '.mat']),'meanCSDData','timeVals','numStimuli');
     end
     
     % Save - numStimuli should be the same for all channels
-    save([folderOut 'rfValues' fileTag '.mat'],'rfValsRMS','rfValsMax','rfValsPower','numStimuli');
+    save(fullfile(folderOut,['rfValues' fileTag '.mat']),'rfValsRMS','rfValsMax','rfValsPower','numStimuli');
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
 elseif strcmpi(measure,'Energy')    % Case 4 - Energy analysis
     
-    folderMP = [folderName 'mpAnalysis\'];
+    folderMP = fullfile(folderName,'mpAnalysis');
     
     % Get Time Ranges
     clear('energyValues','downsampledFreqVals','downsampledTimeVals','numStimuli');
-    load([folderMP 'elec' num2str(goodElectrodes(1)) '\energyMatlab\mEnergy_a' num2str(1) 'e' num2str(1) '.mat']);
-                
+    load(fullfile(folderMP,['elec' num2str(goodElectrodes(1))],'energyMatlab',['mEnergy_a' num2str(1) 'e' num2str(1) '.mat']));
+    
     timePos = cell(1,numTimePeriods);
     for i=1:numTimePeriods
         timePos{i} = intersect(find(downsampledTimeVals>=timeRanges{i}(1)),find(downsampledTimeVals<timeRanges{i}(2)));
     end
     numFreqPos = length(downsampledFreqVals);
     
-    %stimPos = getGoodPos(monkeyName,expDate,protocolName,folderSourceString,gridType,stimPosGreaterThanOne);
+    %stimPos = getGoodPos(subjectName,expDate,protocolName,folderSourceString,gridType,stimPosGreaterThanOne);
 
     for i=1:length(goodElectrodes)
         channelNumber = goodElectrodes(i);
@@ -245,7 +245,7 @@ elseif strcmpi(measure,'Energy')    % Case 4 - Energy analysis
                 
                 % Get Energy data
                 clear('energyValues','downsampledFreqVals','downsampledTimeVals','numStimuli');
-                load([folderMP 'elec' num2str(channelNumber) '\energyMatlab\mEnergy_a' num2str(a) 'e' num2str(e) '.mat']);
+                load(fullfile(folderMP,['elec' num2str(channelNumber)],'energyMatlab',['mEnergy_a' num2str(a) 'e' num2str(e) '.mat']));
 
                 %clear goodPos
                 %goodPos = intersect(parameterCombinations{a,e,1,end,end},stimPos); %#ok<*USENS>
@@ -275,21 +275,20 @@ elseif strcmpi(measure,'Energy')    % Case 4 - Energy analysis
         % Save Mean LFP data
         clear numStimuli
         numStimuli=numStimuliAll;
-        save([folderOut 'rfValues' num2str(channelNumber) fileTag '.mat'],'rfValsRMS','rfValsMax','rfValsPower','numStimuli','downsampledFreqVals');
+        save(fullfile(folderOut,['rfValues' num2str(channelNumber) fileTag '.mat']),'rfValsRMS','rfValsMax','rfValsPower','numStimuli','downsampledFreqVals');
     end
 end
 end
+function stimPos = getGoodPos(subjectName,expDate,protocolName,folderSourceString,gridType,stimPosOption)
 
-function stimPos = getGoodPos(monkeyName,expDate,protocolName,folderSourceString,gridType,stimPosOption)
-
-folderExtract = [folderSourceString 'data\' monkeyName '\' gridType '\' expDate '\' protocolName '\extractedData\'];
-load([folderExtract 'goodStimNums.mat']);
-load([folderExtract 'stimResults.mat']);
+folderExtract = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName,'extractedData');
+load(fullfile(folderExtract,'goodStimNums.mat'));
+load(fullfile(folderExtract,'stimResults.mat'));
 
 goodStimPos = stimResults.stimPosition(goodStimNums);
 
-if exist([folderExtract 'validStimAfterTarget.mat'],'file')
-    load([folderExtract 'validStimAfterTarget.mat']);
+if exist(fullfile(folderExtract,'validStimAfterTarget.mat'),'file')
+    load(fullfile(folderExtract,'validStimAfterTarget.mat'));
     if ~isempty(validStimuliAfterTarget)
         disp(['Removing ' num2str(length(validStimuliAfterTarget)) ' stimuli after target']);
     end

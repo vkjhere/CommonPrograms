@@ -1,6 +1,6 @@
 function codeInStrList = convertDecCodeToStr(codeInDecList,useSingelITC18Flag)
 
-if ~exist('useSingelITC18Flag','var')       useSingelITC18Flag=1;       end
+if ~exist('useSingelITC18Flag','var');       useSingelITC18Flag=1;      end
 
 for i=1:length(codeInDecList)
     

@@ -1,10 +1,10 @@
-% This program extracts the LFP and Spikes from the .nev file and stores the data in
-% the specified folder
+% This program extracts the LFP and Spikes from the .nev file and stores
+% the data in specified folders 
 
 % Inputs
 % fileName: name of the .nev file
 % analogElectrodesToStore: List of analog electrodes to store.
-% folderIn: folder where filename is located. Default: C:\Supratim\rawData\
+% folderIn: folder where filename is located. Default: C:\Supratim\rawData
 % folderOut: folder where the output data will be stored. Default: folderIn
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -27,20 +27,19 @@ function getLFPandSpikes(fileName,analogElectrodesToStore,folderIn,folderOut,...
     goodStimTimes,timeStartFromBaseLine,deltaT,Fs,hFile,neuralChannelsToStore,getLFP,getSpikes)
 
 % Initialize
-if ~exist('folderIn','var')     folderIn = 'C:\Supratim\rawData\';      end
-if ~exist('folderOut','var')    folderOut = folderIn;                   end
-if ~exist('hFile','var')        hFile = [];                             end
-if ~exist('getLFP','var')       getLFP=1;                               end
-if ~exist('getSpikes','var')    getSpikes=1;                            end
+if ~exist('folderIn','var');     folderIn = 'C:\Supratim\rawData\';     end
+if ~exist('folderOut','var');    folderOut = folderIn;                  end
+if ~exist('hFile','var');        hFile = [];                            end
+if ~exist('getLFP','var');       getLFP=1;                              end
+if ~exist('getSpikes','var');    getSpikes=1;                           end
 
 % Append appropriate tags
 fileName = appendIfNotPresent(fileName,'.nev');
-folderIn = appendIfNotPresent(folderIn,'\');
-folderOut = appendIfNotPresent(folderOut,'\');
 
 if isempty(hFile)
     % Load the appropriate DLL
-    dllName = 'N:\programs\requiredResources\nsNEVLibrary64.dll';
+    dllName = fullfile(removeIfPresent(fileparts(mfilename('fullpath')), ...
+        fullfile('ProgramsMAP','CommonPrograms','ReadData')),'SoftwareMAP','NeuroShare','nsNEVLibrary64.dll');
     [nsresult] = ns_SetLibrary(dllName);
     if (nsresult ~= 0)
         error('DLL was not found!');
@@ -94,7 +93,7 @@ analogLabels = char(entityInfo(analogList).EntityLabel);
 segmentLabels = char(entityInfo(segmentList).EntityLabel);
 neuralLabels = char(entityInfo(neuralList).EntityLabel);
 
-%%%%%%% Separate AnalogChannels into Electrode and AnalogInput data %%%%%%%%%%%%%%%%
+%%%%%%% Separate AnalogChannels into Electrode and AnalogInput data %%%%%%%
 electrodeCount = 0;
 ainpCount = 0;
 
@@ -111,8 +110,8 @@ for i=1:cAnalog
     end
 end
 
-segmentChannelNums = str2num(segmentLabels(:,5:end)); %#ok<ST2NM>
-neuralChannelNums  = str2num(neuralLabels(:,5:end)); %#ok<ST2NM>
+segmentChannelNums = str2num(segmentLabels(:,5:end));
+neuralChannelNums  = str2num(neuralLabels(:,5:end));
 
 % Display these numbers
 disp(['Total number of Analog channels recorded: ' num2str(cAnalog) ', electrodes: ' num2str(electrodeCount) ', Inp: ' num2str(ainpCount)]);
@@ -151,8 +150,8 @@ if getLFP && (cAnalog>0)
                 if isempty(findChannelLoc)
                     disp(['Analog Channel ' num2str(analogElectrodesToStore(i)) ' does not exist.']);
                 else
-                    electrodeListIDsStored(count) = electrodeListIDs(findChannelLoc); %#ok<AGROW>
-                    electrodesStored(count) = electrodeNums(findChannelLoc); %#ok<AGROW>
+                    electrodeListIDsStored(count) = electrodeListIDs(findChannelLoc);
+                    electrodesStored(count) = electrodeNums(findChannelLoc);
                     count=count+1;
                 end
             end
@@ -163,12 +162,11 @@ if getLFP && (cAnalog>0)
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Prepare folders
-    isWin=1; % variable for makeDirectory
-    makeDirectory(folderOut,isWin); % main directory to store both LFP and spikes
+    makeDirectory(folderOut); % main directory to store both LFP and spikes
 
     % Make Diectory for storing LFP data
-    outputFolder = [folderOut 'LFP\'];
-    makeDirectory(outputFolder,isWin);
+    outputFolder = fullfile(folderOut,'LFP');
+    makeDirectory(outputFolder);
 
     % Now segment and store data in the outputFolder directory
     totalStim = length(analysisOnsetTimes);
@@ -192,7 +190,7 @@ if getLFP && (cAnalog>0)
                     [~, ~, analogData(j,:)] = ns_GetAnalogData(hFile, ...
                         electrodeListIDsStored(i), goodStimPos(j)+1, numSamples);
                 end
-                save([outputFolder 'elec' num2str(electrodesStored(i))],'analogData','analogInfo');
+                save(fullfile(outputFolder,['elec' num2str(electrodesStored(i)) '.mat']),'analogData','analogInfo');
             end
         end
     end
@@ -210,7 +208,7 @@ if getLFP && (cAnalog>0)
                 [~, ~, analogData(j,:)] = ns_GetAnalogData(hFile, ...
                     analogInputListIDs(i), goodStimPos(j)+1, numSamples);
             end
-            save([outputFolder 'ainp' num2str(analogInputNums(i))],'analogData','analogInfo');
+            save(fullfile(outputFolder,['ainp' num2str(analogInputNums(i)) '.mat']),'analogData','analogInfo');
         end
     end
 
@@ -220,7 +218,7 @@ if getLFP && (cAnalog>0)
         electrodesStored = 0;
     end
     analogChannelsStored = electrodesStored; %#ok<NASGU>
-    save([outputFolder 'lfpInfo.mat'],'analogChannelsStored','electrodesStored','analogInputNums','goodStimPos','timeVals');
+    save(fullfile(outputFolder,'lfpInfo.mat'),'analogChannelsStored','electrodesStored','analogInputNums','goodStimPos','timeVals');
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -229,7 +227,6 @@ end
 
 if electrodeCount ~= 0
     if getSpikes
-
         % The optional input digitalChannelsToStore contains the list of channels that
         % should be recorded
         clear neuralListIDs neuralChannelsStored
@@ -247,8 +244,8 @@ if electrodeCount ~= 0
                 disp(['Neural Channel ' num2str(neuralChannelsToStore(i)) ' does not exist.']);
             else
                 for j=1:length(findChannelLocs)
-                    neuralListIDs(count) = neuralList(findChannelLocs(j)); %#ok<AGROW>
-                    neuralChannelsStored(count) = neuralChannelNums(findChannelLocs(j)); %#ok<AGROW>
+                    neuralListIDs(count) = neuralList(findChannelLocs(j));
+                    neuralChannelsStored(count) = neuralChannelNums(findChannelLocs(j));
                     count=count+1;
                 end
             end
@@ -263,13 +260,10 @@ if electrodeCount ~= 0
         disp([num2str(cNeuralListIDs) ' neurons obtained']);
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % Prepare folders
-        isWin=1; % variable for makeDirectory
-        makeDirectory(folderOut,isWin); % main directory to store both LFP and spikes
-
+       
         % Make Diectory for storing Spike data
-        outputFolder = [folderOut 'Spikes\'];
-        makeDirectory(outputFolder,isWin);
+        outputFolder = fullfile(folderOut,'Spikes');
+        makeDirectory(outputFolder);
 
         % Now segment and store data in the outputFolder directory
         totalStim = length(analysisOnsetTimes);
@@ -293,12 +287,12 @@ if electrodeCount ~= 0
                     spikeData{j} = spikeData{j} - goodStimTimes(j);
                 end
             end
-            save([outputFolder 'elec' num2str(neuralChannelsStored(i)) ... 
-                '_SID' num2str(SourceUnitID(i))],'spikeData','neuralInfo');
+            save(fullfile(outputFolder,['elec' num2str(neuralChannelsStored(i)) ... 
+                '_SID' num2str(SourceUnitID(i)) '.mat']),'spikeData','neuralInfo');
         end
 
         % Write Spike information
-        save([outputFolder 'spikeInfo.mat'],'neuralChannelsStored','SourceUnitID');
+        save(fullfile(outputFolder,'spikeInfo.mat'),'neuralChannelsStored','SourceUnitID');
     end
 
 
@@ -326,8 +320,8 @@ if electrodeCount ~= 0
                 disp(['Segements from Channel ' num2str(segmentChannelsToStore(i)) ' does not exist.']);
             else
                 for j=1:length(findChannelLocs)
-                    segmentListIDs(count) = segmentList(findChannelLocs(j)); %#ok<AGROW>
-                    segmentChannelsStored(count) = segmentChannelNums(findChannelLocs(j)); %#ok<AGROW>
+                    segmentListIDs(count) = segmentList(findChannelLocs(j));
+                    segmentChannelsStored(count) = segmentChannelNums(findChannelLocs(j));
                     count=count+1;
                 end
             end
@@ -338,12 +332,9 @@ if electrodeCount ~= 0
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Prepare folders
-        isWin=1; % variable for makeDirectory
-        makeDirectory(folderOut,isWin); % main directory to store both LFP and spikes
-
-        % Make Diectory for storing Spike data
-        outputFolder = [folderOut 'Segments\'];
-        makeDirectory(outputFolder,isWin);
+        
+        outputFolder = fullfile(folderOut,'Segments');
+        makeDirectory(outputFolder);
 
         % Now segment and store data in the outputFolder directory
 
@@ -355,12 +346,12 @@ if electrodeCount ~= 0
             clear timeStamp segmentData sampleCount unitID
             [~,timeStamp,segmentData, sampleCount, unitID]  = ns_GetSegmentData(hFile, segmentListIDs(i),1:min(1000000,numberOfItems(segmentListIDs(i)))); %#ok<NASGU,ASGLU>
 
-            save([outputFolder 'elec' num2str(segmentChannelsStored(i))],'segmentData','segmentInfo','timeStamp','unitID','sampleCount');
+            save(fullfile(outputFolder,['elec' num2str(segmentChannelsStored(i)) '.mat']),'segmentData','segmentInfo','timeStamp','unitID','sampleCount');
         end
 
         % Write Spike information
         numItems = numberOfItems(segmentListIDs); %#ok<NASGU>
-        save([outputFolder 'segmentInfo.mat'],'segmentChannelsStored','numItems');
+        save(fullfile(outputFolder,'segmentInfo.mat'),'segmentChannelsStored','numItems');
     end
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

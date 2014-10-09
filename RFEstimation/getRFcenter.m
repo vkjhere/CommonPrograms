@@ -1,7 +1,7 @@
 function params = getRFcenter(aVals,eVals,rfVals,poolingOption,numStimuli)
 
-if ~exist('poolingOption','var')        poolingOption=2;                end
-if ~exist('numStimuli','var')           numStimuli=[];                  end
+if ~exist('poolingOption','var');        poolingOption=2;                end
+if ~exist('numStimuli','var');           numStimuli=[];                  end
 
 opts = optimset('TolX',1e-6,'TolFun',1e-6,'MaxIter',5000,...
     'Display','off','LargeScale','off','MaxFunEvals',500);

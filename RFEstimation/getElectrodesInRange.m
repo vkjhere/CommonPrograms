@@ -1,28 +1,21 @@
-function electrodeNums = getElectrodesInRange(monkeyName,expDate,protocolName,folderSourceString,dRange,isWin,stimulusCenter,useTheseElectrodes,gridType)
+function electrodeNums = getElectrodesInRange(subjectName,expDate,protocolName,folderSourceString,dRange,stimulusCenter,useTheseElectrodes,gridType)
 
-if ~exist('isWin','var')                isWin=1;                        end
-if ~exist('stimulusCenter','var')       stimulusCenter=[];              end
-if ~exist('useTheseElectrodes','var')   useTheseElectrodes=[];          end
-if ~exist('gridType','var')             gridType = 'Microelectrode';   end
+if ~exist('stimulusCenter','var');       stimulusCenter=[];             end
+if ~exist('useTheseElectrodes','var');   useTheseElectrodes=[];         end
+if ~exist('gridType','var');             gridType = 'Microelectrode';   end
 
-if isWin==1
-    folderseparator='\';
-    folderCluster = 'N:\Programs\programsMatlabAddPath\generalPrograms\receptiveFieldEstimation\';
-else
-    folderseparator='/';
-    folderCluster = '/Volumes/maunsell/';
-end
+folderRFData = fullfile(removeIfPresent(fileparts(mfilename('fullpath')),fullfile('ProgramsMAP','CommonPrograms','RFEstimation')),'DataMAP','ReceptiveFieldData');
 
 % get Stimulus position information
 if isempty(stimulusCenter)
-    load([folderSourceString monkeyName folderseparator expDate folderseparator protocolName folderseparator 'extractedData' folderseparator 'parameterCombinations.mat']);
+    load(fullfile(folderSourceString,subjectName,expDate,protocolName,extractedData,'parameterCombinations.mat'));
 else
     aValsUnique=stimulusCenter(1);
     eValsUnique=stimulusCenter(2);
 end
 
 % get RF information
-load([folderCluster monkeyName gridType 'RFData']);
+load(fullfile(folderRFData,[subjectName gridType 'RFData.mat']));
 
 count=1;
 if isempty(useTheseElectrodes)

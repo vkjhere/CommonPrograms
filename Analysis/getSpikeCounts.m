@@ -11,7 +11,7 @@ if isempty(X)
     H=0;
 else
     numTrials = length(X);
-    
+    H = zeros(1,numTrials);
     for i=1:numTrials
         spk = X{i};
         H(i) = length(intersect(find(spk>=tRange(1)),find(spk<tRange(2))));

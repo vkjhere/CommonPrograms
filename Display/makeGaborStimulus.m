@@ -6,7 +6,7 @@
 
 function [gaborPatch,aperature] = makeGaborStimulus(gaborStim,aVals,eVals,showGabor)
 
-if ~exist('showGabor','var')        showGabor=0;            end
+if ~exist('showGabor','var');               showGabor=0;                end
 
 azi = gaborStim.azimuthDeg;
 ele = gaborStim.elevationDeg;
@@ -26,8 +26,14 @@ end
 % Make a 2D grating
 theta = pi*ori/180; % converting to radians
 
-for e=1:length(eVals)  % 
-    for a=1:length(aVals)
+nE=length(eVals);
+nA=length(aVals);
+
+grating = zeros(nE,nA);
+aperature = zeros(nE,nA);
+
+for e=1:nE
+    for a=1:nA
         xg = aVals(a)*cos(theta) - eVals(e)*sin(theta);
         grating(e,a) = C*sin(2*pi*sf*xg);
         
@@ -48,7 +54,7 @@ params(3) = gaborStim.sigmaDeg;
 params(4) = params(3);
 params(5) = 0;
 params(6) = 1;
-[diffOut,GaussianEnvelope,boundaryX,boundaryY] = gauss2D(params,aVals,eVals,[]);
+[~,GaussianEnvelope,boundaryX,boundaryY] = gauss2D(params,aVals,eVals,[]);
 
 % set everything outside radius to zero
 gaborPatch = 50+GaussianEnvelope.*aperature.*grating;

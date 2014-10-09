@@ -9,7 +9,7 @@
 
 function [ccg,xs,rSC,ccgShift] = getCCG(spike1,spike2,tRangeS,dMS)
 
-if ~exist('dMS','var')                    dMS=1;                        end
+if ~exist('dMS','var');                    dMS=1;                        end
 
 % Convert spike times to binned analog data of zeros and ones
 analogSpikeTrain1 = convertSpikeTimes2Bins(spike1,tRangeS,dMS);
