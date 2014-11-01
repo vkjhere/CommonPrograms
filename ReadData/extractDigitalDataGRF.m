@@ -1,80 +1,30 @@
 % This function is used to extract the digital data for the GRF Protocol.
 
-function goodStimTimes = extractDigitalDataGRF(digitalEvents,digitalTimeStamps,folderExtract,ignoreTargetStimFlag,frameRate)
+% These are the following modes in which the GaborRFMap protocol has been used so far.
+
+% 1. Target and mapping stimulus 0 are on and are presented synchronously,
+% while mapping stimulus 1 is off. Digital codes are sent only for map0 stimulus.
+
+% 2. The task is run in the fixation mode, in which target stimulus is off
+% and all trials are catch trials. Digital codes are sent only for map0
+% stimulus. The target is assumed to be synchronous with the mapping
+% stimulus in this case.
+
+function [goodStimNums,goodStimTimes,side] = extractDigitalDataGRF(folderExtract,ignoreTargetStimFlag,frameRate)
 
 if ~exist('ignoreTargetStimFlag','var');   ignoreTargetStimFlag=0;      end
-if ~exist('frameRate','var');              frameRate=60;                end
+if ~exist('frameRate','var');              frameRate=100;               end
 
-useSingleITC18Flag=1;
-
-% Special cases in case a singleITC is used.
-if useSingleITC18Flag
-    % First, find the reward signals
-    rewardOnPos = find(rem(digitalEvents,2)==0);
-    rewardOffPos = find(digitalEvents==2^16-1);
-    
-    if length(rewardOnPos)~=length(rewardOffPos)
-        disp('Unequal number of reward on and reward off!!');
-    else
-        rewardPos = [rewardOnPos(:) ; rewardOffPos(:)];
-        disp([num2str(length(rewardPos)) ' are reward signals and will be discarded' ]);
-        digitalEvents(rewardPos)=[];
-        digitalTimeStamps(rewardPos)=[];
-    end
-    digitalEvents=digitalEvents-1;
-end
-
-% All digital codes all start with a leading 1, which means that they are greater than hex2dec(8000) = 32768.
-modifiedDigitalEvents = digitalEvents(digitalEvents>32768) - 32768;
-allCodesInDec = unique(modifiedDigitalEvents);
-disp(['Number of distinct codes: ' num2str(length(allCodesInDec))]);
-allCodesInStr = convertDecCodeToStr(allCodesInDec,useSingleITC18Flag);
-
-clear identifiedDigitalCodes badDigitalCodes
-count=1; badCount=1;
-for i=1:length(allCodesInDec)
-    if ~digitalCodeDictionary(allCodesInStr(i,:))
-        disp(['Unidentified digital code: ' allCodesInStr(i,:) ', bin: ' dec2bin(allCodesInDec(i),16) ', dec: ' num2str(allCodesInDec(i)) ', occured ' num2str(length(find(modifiedDigitalEvents==allCodesInDec(i))))]);
-        badDigitalCodes(badCount) = allCodesInDec(i);
-        badCount=badCount+1;
-    else
-        identifiedDigitalCodes(count) = allCodesInDec(i);
-        count=count+1;
-    end
-end
-
-if badCount>1
-    error(['The following Digital Codes are bad: ' num2str(badDigitalCodes)]);
-end
-
-numDigitalCodes = length(identifiedDigitalCodes);
-disp(['Number of distinct codes identified: ' num2str(numDigitalCodes)]);
-
-for i=1:numDigitalCodes
-    digitalCodeInfo(i).codeNumber = identifiedDigitalCodes(i); %#ok<*AGROW>
-    digitalCodeInfo(i).codeName = convertDecCodeToStr(identifiedDigitalCodes(i));
-    clear codePos
-    codePos = find(identifiedDigitalCodes(i) == digitalEvents-32768);
-    digitalCodeInfo(i).time = digitalTimeStamps(codePos);
-    digitalCodeInfo(i).value = digitalEvents(codePos+1);
-end
-
-% Write the digitalCodes
-makeDirectory(folderExtract);
-save(fullfile(folderExtract,'digitalEvents.mat'),'digitalCodeInfo','digitalTimeStamps','digitalEvents');
-
-%%%%%%%%%%%%%%%%%%%%%%% Get Stimulus results %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-readDigitalCodesGRF(folderExtract,frameRate); % writes stimResults and trialResults
+stimResults = readDigitalCodesGRF(folderExtract,frameRate); % writes stimResults and trialResults
+side = stimResults.side;
 [goodStimNums,goodStimTimes] = getGoodStimNumsGRF(folderExtract,ignoreTargetStimFlag); % Good stimuli
-getDisplayCombinationsGRF(folderExtract,goodStimNums);
 save(fullfile(folderExtract,'goodStimNums.mat'),'goodStimNums');
-
 end
 
 % GRF Specific protocols
 function [stimResults,trialResults,trialEvents] = readDigitalCodesGRF(folderOut,frameRate)
 
-if ~exist('frameRate','var');              frameRate=60;                end
+if ~exist('frameRate','var');              frameRate=100;               end
 kForceQuit=7;
 
 % Get the values of the following trial events for comparison with the dat
@@ -116,48 +66,53 @@ mapping0Times   = [digitalCodeInfo(find(convertStrCodeToDec('M0')==allDigitalCod
 mapping1Times   = [digitalCodeInfo(find(convertStrCodeToDec('M1')==allDigitalCodesInDec)).time];
 numTrials = length(trialStartTimes);
 
-% Check the default case - only mapping0/1 is on, and only its stimulus properties are put out.
 
-if (max(diff([length(azimuth) length(elevation) length(contrast) length(temporalFrequency) ...
-    length(radius) length(sigma) length(spatialFrequency) length(orientation)])) > 0 )
-
-    error('Length of stimulus properties are not even');
+if isempty(azimuth) || isempty(elevation) || isempty(contrast) || isempty(temporalFrequency) ...
+        || isempty(radius) || isempty(sigma) || isempty(spatialFrequency) || isempty(orientation)
+    
+    disp('Digital codes for the stimuli are not sent. Read from Lablib data file later ...');
 else
-    if((length(azimuth) == length(mapping0Times)) && isempty(mapping1Times))
-        disp('Only Mapping 0 is used');
-        stimResults.azimuth = convertUnits(azimuth',100);
-        stimResults.elevation = convertUnits(elevation',100);
-        stimResults.contrast = convertUnits(contrast',10);
-        stimResults.temporalFrequency = convertUnits(temporalFrequency',100);
-        stimResults.radius = convertUnits(radius',100);
-        stimResults.sigma = convertUnits(sigma',100);
-        stimResults.orientation = convertUnits(orientation');
-        stimResults.spatialFrequency = convertUnits(spatialFrequency',100);
-        stimResults.side=0;
+    
+    % Check the default case - only mapping0/1 is on, and only its stimulus properties are put out.
+    
+    if (max(diff([length(azimuth) length(elevation) length(contrast) length(temporalFrequency) ...
+            length(radius) length(sigma) length(spatialFrequency) length(orientation)])) > 0 )
         
-    elseif((length(azimuth) == length(mapping1Times)) && isempty(mapping0Times))
-        disp('Only Mapping 1 is used');
-        stimResults.azimuth = convertUnits(azimuth',100);
-        stimResults.elevation = convertUnits(elevation',100);
-        stimResults.contrast = convertUnits(contrast',10);
-        stimResults.temporalFrequency = convertUnits(temporalFrequency',10);
-        stimResults.radius = convertUnits(radius',100);
-        stimResults.sigma = convertUnits(sigma',100);
-        stimResults.orientation = convertUnits(orientation');
-        stimResults.spatialFrequency = convertUnits(spatialFrequency',100);
-        stimResults.side=1;
-        
+        error('Length of stimulus properties are not even');
     else
-        disp('Digital codes from both sides!!!');
-        stimResults.azimuth = convertUnits(azimuth',100);
-        stimResults.elevation = convertUnits(elevation',100);
-        stimResults.contrast = convertUnits(contrast',10);
-        stimResults.temporalFrequency = convertUnits(temporalFrequency',10);
-        stimResults.radius = convertUnits(radius',100);
-        stimResults.sigma = convertUnits(sigma',100);
-        stimResults.orientation = convertUnits(orientation');
-        stimResults.spatialFrequency = convertUnits(spatialFrequency',100);
-        stimResults.side=[0 1];
+        if((length(azimuth) == length(mapping0Times)) && isempty(mapping1Times))
+            disp('Only Mapping 0 is used');
+            stimResults.azimuth = convertUnits(azimuth',100);
+            stimResults.elevation = convertUnits(elevation',100);
+            stimResults.contrast = convertUnits(contrast',10);
+            stimResults.temporalFrequency = convertUnits(temporalFrequency',100);
+            stimResults.radius = convertUnits(radius',100);
+            stimResults.sigma = convertUnits(sigma',100);
+            stimResults.orientation = convertUnits(orientation');
+            stimResults.spatialFrequency = convertUnits(spatialFrequency',100);
+            
+        elseif((length(azimuth) == length(mapping1Times)) && isempty(mapping0Times))
+            disp('Only Mapping 1 is used');
+            stimResults.azimuth = convertUnits(azimuth',100);
+            stimResults.elevation = convertUnits(elevation',100);
+            stimResults.contrast = convertUnits(contrast',10);
+            stimResults.temporalFrequency = convertUnits(temporalFrequency',10);
+            stimResults.radius = convertUnits(radius',100);
+            stimResults.sigma = convertUnits(sigma',100);
+            stimResults.orientation = convertUnits(orientation');
+            stimResults.spatialFrequency = convertUnits(spatialFrequency',100);
+            
+        else
+            disp('Digital codes from both sides!!!');
+            stimResults.azimuth = convertUnits(azimuth',100);
+            stimResults.elevation = convertUnits(elevation',100);
+            stimResults.contrast = convertUnits(contrast',10);
+            stimResults.temporalFrequency = convertUnits(temporalFrequency',10);
+            stimResults.radius = convertUnits(radius',100);
+            stimResults.sigma = convertUnits(sigma',100);
+            stimResults.orientation = convertUnits(orientation');
+            stimResults.spatialFrequency = convertUnits(spatialFrequency',100);
+        end
     end
 end
 
@@ -205,15 +160,47 @@ if (max(abs(numStimTask(nonInstructionTrials) - numStimMap0(nonInstructionTrials
     disp('Mapping0 and Task times are the same');
     numStims = numStimMap0;
     stimResults.time = [digitalCodeInfo(find(convertStrCodeToDec('M0')==allDigitalCodesInDec)).time]';
+    stimResults.side = 0;
+    taskType = convertUnits([digitalCodeInfo(find(convertStrCodeToDec('TG')==allDigitalCodesInDec)).value])'; 
+    
+    if sum(taskType)==0 % Target is always null
+        taskType = convertUnits([digitalCodeInfo(find(convertStrCodeToDec('M0')==allDigitalCodesInDec)).value])';
+    end
+    
 elseif (max(abs(numStimTask(nonInstructionTrials) - numStimMap1(nonInstructionTrials)))==0)
     disp('Mapping1 and Task times are the same');
     numStims = numStimMap1;
     stimResults.time = [digitalCodeInfo(find(convertStrCodeToDec('M1')==allDigitalCodesInDec)).time]';
-else
-    error('Mapping0/1 and Task times not the same');
-end
+    stimResults.side = 1;
+    taskType = convertUnits([digitalCodeInfo(find(convertStrCodeToDec('TG')==allDigitalCodesInDec)).value])';
     
-taskType = convertUnits([digitalCodeInfo(find(convertStrCodeToDec('TG')==allDigitalCodesInDec)).value])';
+    if sum(taskType)==0 % Target is always null
+        taskType = convertUnits([digitalCodeInfo(find(convertStrCodeToDec('M1')==allDigitalCodesInDec)).value])';
+    end
+    
+else
+    disp('Mapping0/1 and Task times not the same');
+    
+    if sum(numStimMap0)>0 && sum(numStimMap1)==0
+        disp('Using Mapping0 times instead of task times...');
+        numStimTask=numStimMap0;        % Assume task time is the same as mapping stimulus time                            
+        numStims = numStimMap0;
+        stimResults.time = [digitalCodeInfo(find(convertStrCodeToDec('M0')==allDigitalCodesInDec)).time]';
+        
+        stimResults.side = 0;
+        taskType = convertUnits([digitalCodeInfo(find(convertStrCodeToDec('M0')==allDigitalCodesInDec)).value])'; % Assume task times and types are the same as M0
+    
+    elseif sum(numStimMap0)==0 && sum(numStimMap1)>0
+        disp('Using Mapping1 times instead of task times...');
+        numStimTask=numStimMap1;        % Assume task time is the same as mapping stimulus time
+        numStims = numStimMap1;
+        stimResults.time = [digitalCodeInfo(find(convertStrCodeToDec('M1')==allDigitalCodesInDec)).time]';
+        
+        stimResults.side = 1;
+        taskType = convertUnits([digitalCodeInfo(find(convertStrCodeToDec('M1')==allDigitalCodesInDec)).value])'; % Assume task times and types are the same as M1
+    end
+end
+
 posTask = 0;
 pos=0;
 for i=1:numTrials
@@ -318,155 +305,9 @@ end
 disp(['Number of good stimuli: ' num2str(length(goodStimNums))]);
 goodStimTimes = stimResults.time(goodStimNums);
 end
-function parameterCombinations = getDisplayCombinationsGRF(folderOut,goodStimNums)
-
-load(fullfile(folderOut,'stimResults.mat'));
-
-% Five parameters are chosen:
-% 1. Azimuth
-% 2. Elevation
-% 3. Sigma, Radius 
-% 4. Spatial Frequency
-% 5. Orientation
-% 6. Contrast
-% 7. Temporal Frequency
-
-% Parameters index
-parameters{1} = 'azimuth';
-parameters{2} = 'elevation';
-parameters{3} = 'sigma';
-parameters{4} = 'spatialFrequency';
-parameters{5} = 'orientation';
-parameters{6} = 'contrast';
-parameters{7} = 'temporalFrequency'; %#ok<NASGU>
-
-% get Contrast
-aValsAll  = stimResults.azimuth;
-eValsAll  = stimResults.elevation;
-sValsAll  = stimResults.sigma;
-fValsAll  = stimResults.spatialFrequency;
-oValsAll  = stimResults.orientation;
-cValsAll  = stimResults.contrast;
-tValsAll  = stimResults.temporalFrequency;
-
-if ~isempty(aValsAll)
-    % Get good stim
-    if ~exist('goodStimNums','var')
-        goodStimNums = getGoodStimNumsGRF(folderOut);
-    end
-
-    aValsGood = aValsAll(goodStimNums);
-    eValsGood = eValsAll(goodStimNums);
-    sValsGood = sValsAll(goodStimNums);
-    fValsGood = fValsAll(goodStimNums);
-    oValsGood = oValsAll(goodStimNums);
-    cValsGood = cValsAll(goodStimNums);
-    tValsGood = tValsAll(goodStimNums);
-
-    aValsUnique = unique(aValsGood); aLen = length(aValsUnique);
-    eValsUnique = unique(eValsGood); eLen = length(eValsUnique);
-    sValsUnique = unique(sValsGood); sLen = length(sValsUnique);
-    fValsUnique = unique(fValsGood); fLen = length(fValsUnique);
-    oValsUnique = unique(oValsGood); oLen = length(oValsUnique);
-    cValsUnique = unique(cValsGood); cLen = length(cValsUnique);
-    tValsUnique = unique(tValsGood); tLen = length(tValsUnique);
-
-    % display
-    disp(['Number of unique azimuths: ' num2str(aLen)]);
-    disp(['Number of unique elevations: ' num2str(eLen)]);
-    disp(['Number of unique sigmas: ' num2str(sLen)]);
-    disp(['Number of unique Spatial freqs: ' num2str(fLen)]);
-    disp(['Number of unique orientations: ' num2str(oLen)]);
-    disp(['Number of unique contrasts: ' num2str(cLen)]);
-    disp(['Number of unique temporal freqs: ' num2str(tLen)]);
-
-    % If more than one value, make another entry with all values
-    if (aLen > 1);           aLen=aLen+1;                    end
-    if (eLen > 1);           eLen=eLen+1;                    end
-    if (sLen > 1);           sLen=sLen+1;                    end
-    if (fLen > 1);           fLen=fLen+1;                    end
-    if (oLen > 1);           oLen=oLen+1;                    end
-    if (cLen > 1);           cLen=cLen+1;                    end
-    if (tLen > 1);           tLen=tLen+1;                    end
-
-    allPos = 1:length(goodStimNums);
-    disp(['total combinations: ' num2str((aLen)*(eLen)*(sLen)*(fLen)*(oLen)*(cLen)*(tLen))]);
-
-    for a=1:aLen
-        if a==aLen
-            aPos = allPos;
-        else
-            aPos = find(aValsGood == aValsUnique(a));
-        end
-
-        for e=1:eLen
-            if e==eLen
-                ePos = allPos;
-            else
-                ePos = find(eValsGood == eValsUnique(e));
-            end
-
-            for s=1:sLen
-                if s==sLen
-                    sPos = allPos;
-                else
-                    sPos = find(sValsGood == sValsUnique(s));
-                end
-
-                for f=1:fLen
-                    if f==fLen
-                        fPos = allPos;
-                    else
-                        fPos = find(fValsGood == fValsUnique(f));
-                    end
-
-                    for o=1:oLen
-                        if o==oLen
-                            oPos = allPos;
-                        else
-                            oPos = find(oValsGood == oValsUnique(o));
-                        end
-                        
-                        for c=1:cLen
-                            if c==cLen
-                                cPos = allPos;
-                            else
-                                cPos = find(cValsGood == cValsUnique(c));
-                            end
-                            
-                            for t=1:tLen
-                                if t==tLen
-                                    tPos = allPos;
-                                else
-                                    tPos = find(tValsGood == tValsUnique(t));
-                                end
-
-
-                                aePos = intersect(aPos,ePos);
-                                aesPos = intersect(aePos,sPos);
-                                aesfPos = intersect(aesPos,fPos);
-                                aesfoPos = intersect(aesfPos,oPos);
-                                aesfocPos = intersect(aesfoPos,cPos);
-                                aesfoctPos = intersect(aesfocPos,tPos);
-                                parameterCombinations{a,e,s,f,o,c,t} = aesfoctPos;
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    % save
-    save(fullfile(folderOut,'parameterCombinations.mat'),'parameters','parameterCombinations', ...
-        'aValsUnique','eValsUnique','sValsUnique','fValsUnique','oValsUnique','cValsUnique','tValsUnique');
-
-end
-end
-function outNum = convertUnits(num,f,useSingleITC18Flag)
+function outNum = convertUnits(num,f)
 
 if ~exist('f','var');                       f=1;                        end
-if ~exist('useSingleITC18Flag','var');      useSingleITC18Flag=1;       end
 
 for i=1:length(num)
     if num(i) > 16384
@@ -474,10 +315,6 @@ for i=1:length(num)
     end
 end
 outNum = num/f;
-
-if useSingleITC18Flag
-    outNum=outNum/2;
-end
 end
 function [numStim,stimOnPos] = getStimPosPerTrial(trialStartTimes, stimStartTimes)
 
