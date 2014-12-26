@@ -1,4 +1,4 @@
-function getReceptiveFields(subjectName,expDate,protocolName,folderSourceString,gridType,measure,removeAvgRef,goodElectrodes)
+function getReceptiveFields(subjectName,expDate,protocolName,folderSourceString,gridType,measure,removeAvgRef)
 
 if ~exist('removeAvgRef','var');         removeAvgRef=0;                 end
 
@@ -8,7 +8,7 @@ folderExtract = fullfile(folderName,'extractedData');
 folderSegment = fullfile(folderName,'segmentedData');
 folderOut = fullfile(folderName,'RFMeasures',measure);
 
-load(fullfile(folderExtract,'parameterCombinations.mat'));
+%load(fullfile(folderExtract,'parameterCombinations.mat'));
 
 if removeAvgRef
     fileTag = 'AvgRefRemoved';
@@ -16,24 +16,25 @@ else
     fileTag = '';
 end
 
+load(fullfile(folderOut,['rfValues' fileTag '.mat']));
 if strcmpi(measure,'LFP') || strcmpi(measure,'CSD') || strcmpi(measure,'Spikes')
-    load(fullfile(folderOut,['rfValues' fileTag '.mat']));
     numTimeRanges = size(rfValsRMS,4); %#ok<*NODEF>
 elseif strcmpi(measure,'Energy')
-    load(fullfile(folderOut,['rfValues' num2str(goodElectrodes(1)) fileTag '.mat']));
+    load(fullfile(folderOut,['rfValues' num2str(electrodeList(1)) fileTag '.mat']));
     numTimeRanges = size(rfValsRMS,3);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if strcmpi(measure,'LFP') || strcmpi(measure,'CSD')
-    load(fullfile(folderSegment,'LFP','lfpInfo.mat'));
-    channelNumbers = analogChannelsStored;
-elseif strcmpi(measure,'Spikes')
-    load(fullfile(folderSegment,'Spikes','spikeInfo.mat'));
-    channelNumbers = neuralChannelsStored;
-elseif strcmpi(measure,'Energy')
-    channelNumbers = goodElectrodes;
-end
+% if strcmpi(measure,'LFP') || strcmpi(measure,'CSD')
+% %    load(fullfile(folderSegment,'LFP','lfpInfo.mat'));
+%     channelNumbers = analogChannelsStored;
+% elseif strcmpi(measure,'Spikes')
+% %    load(fullfile(folderSegment,'Spikes','spikeInfo.mat'));
+%     channelNumbers = neuralChannelsStored;
+% elseif strcmpi(measure,'Energy')
+%     channelNumbers = goodElectrodes;
+% end
+channelNumbers=electrodeList;
 
 if strcmpi(measure,'LFP') || strcmpi(measure,'CSD') || strcmpi(measure,'Spikes')
     for poolingOption=1:3
