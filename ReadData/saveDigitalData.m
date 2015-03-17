@@ -42,7 +42,7 @@ for i=1:length(allCodesInDec)
 end
 
 if badCount>1
-    error(['The following Digital Codes are bad: ' num2str(badDigitalCodes)]);
+    disp(['The following Digital Codes are bad: ' num2str(badDigitalCodes)]);
 end
 
 numDigitalCodes = length(identifiedDigitalCodes);

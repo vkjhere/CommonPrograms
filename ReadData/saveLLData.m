@@ -10,6 +10,9 @@
 % Now it only contains 1, the remining ones (2-5) are in a separate program
 % (saveEyePositionAndBehaviorData)
 
+% 10 March 2015: More information is extracted from LL data file because
+% the digital codes are no longer sufficient for EEG data
+
 function LLFileExistsFlag = saveLLData(subjectName,expDate,protocolName,folderSourceString,gridType)
 
 datFileName = fullfile(folderSourceString,'data','rawData',[subjectName expDate],[subjectName expDate protocolName '.dat']);
@@ -188,11 +191,23 @@ temporalFreqHz = [];
 eotCode=[];
 myEotCode=[];
 startTime=[];
+instructTrial=[];
+catchTrial=[];
+trialCertify=[];
 
 for i=1:numTrials
     disp(['trial ' num2str(i) ' of ' num2str(numTrials)]);
     clear trials
     trials = readLLFile('t',i);
+    
+    if isfield(trials,'trial')
+        instructTrial = [instructTrial [trials.trial.data.instructTrial]];
+        catchTrial    = [catchTrial [trials.trial.data.catchTrial]];
+    end
+    
+    if isfield(trials,'trialCertify')
+        trialCertify = [trialCertify [trials.trialCertify.data]];
+    end
     
     if isfield(trials,'trialEnd')
         eotCode = [eotCode [trials.trialEnd.data]];
@@ -262,4 +277,8 @@ end
 LL.eotCode = eotCode;
 LL.myEotCode = myEotCode;
 LL.startTime = startTime/1000; % in seconds
+LL.instructTrial = instructTrial;
+LL.catchTrial = catchTrial;
+LL.trialCertify = trialCertify;
+
 end
