@@ -41,34 +41,39 @@ eegData = pop_loadbv(folderIn,fileName,[],1);
 %%%%%%%%%%%%%%%%%%%%%%%%%% Digital Codes %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-[digitalTimeStamps,digitalEvents] = getStimulusEvents(eegData.event);
-disp(['Ditial events: Total: ' num2str(length(eegData.event)) ', Stimulus: ' num2str(length(digitalTimeStamps))]);
+[digitalTimeStampsS,digitalEventsS,digitalTimeStampsR,digitalEventsR] = getStimulusEvents(eegData.event);
+disp(['Digital events: Total: ' num2str(length(eegData.event)) ', Stimulus: ' num2str(length(digitalTimeStampsS)) ', Response: ' num2str(length(digitalTimeStampsR))]);
 
 % We only consider codes that are separated by at least deltaLimit ms to make sure
 % that none of the codes are during the transition period.
+deltaLimitMS = 3;
 
-digitalTimeStamps = digitalTimeStamps/eegData.srate; % Time in seconds
-
-deltaLimit = 3/1000; % ms 
-dt = diff(digitalTimeStamps);
-badDTPos = find(dt<=deltaLimit);
-
-if ~isempty(badDTPos)
-    disp([num2str(length(badDTPos)) ' of ' num2str(length(digitalTimeStamps)) ' (' num2str(100*length(badDTPos)/length(digitalTimeStamps),2) '%) are separated by less than ' num2str(deltaLimit) ' s and will be discarded']);
-    digitalTimeStamps(badDTPos)=[];
-    digitalEvents(badDTPos)=[];
-end
+if isempty(digitalTimeStampsR)
+    [digitalTimeStamps,digitalEvents] = removeBadCodes(digitalTimeStampsS/eegData.srate,digitalEventsS,deltaLimitMS);
+else
+    [digitalTimeStampsS,digitalEventsS] = removeBadCodes(digitalTimeStampsS/eegData.srate,digitalEventsS,deltaLimitMS);
+    [digitalTimeStampsR,digitalEventsR] = removeBadCodes(digitalTimeStampsR/eegData.srate,digitalEventsR,deltaLimitMS);
+    [digitalTimeStamps,digitalEvents] = combineGoodCodes(digitalTimeStampsS,digitalEventsS,digitalTimeStampsR,digitalEventsR,deltaLimitMS);
 end
 
-function [eventTimes,eventVals] = getStimulusEvents(allEvents)
+end
+
+function [eventTimes,eventVals,eventTimesR,eventValsR] = getStimulusEvents(allEvents)
 
 % All 16 digital pins of BrainProducts should be set to 'Stimulus'. If that
 % is not the case, throw an error for now.
 
 count=1;
+countR=1; dispFlag=0; eventTimesR=[]; eventValsR = [];
 for i=1:length(allEvents)
     if strcmp(allEvents(i).code, 'Response')
-        error('Response pins should be set to Stimulus in the Brain Products configurations settings.');
+        if dispFlag==0
+            disp('Response pins should be set to Stimulus in the Brain Products configurations settings. Trying to merge Responses to Stimulus...');
+            dispFlag=1;
+        end
+        eventTimesR(countR) = allEvents(i).latency;
+        eventValsR(countR)   = str2double(allEvents(i).type(2:end));
+        countR=countR+1;
     end   
     if strcmp(allEvents(i).code, 'Stimulus')
         eventTimes(count) = allEvents(i).latency;
@@ -77,7 +82,36 @@ for i=1:length(allEvents)
     end
 end
 
-% MSB is set to negative. Change to positive
-x = find(eventVals<0);
-eventVals(x) = 2^16 + eventVals(x);
+if countR==1 % No response markers. This happens only when all pins are set at Stimulus
+    % MSB is set to negative. Change to positive
+    x = find(eventVals<0);
+    eventVals(x) = 2^16 + eventVals(x);
+end
+
+end
+function [digitalTimeStamps,digitalEvents] = removeBadCodes(digitalTimeStamps,digitalEvents,deltaLimitMS)
+deltaLimit = deltaLimitMS/1000; 
+dt = diff(digitalTimeStamps);
+badDTPos = find(dt<=deltaLimit);
+
+if ~isempty(badDTPos)
+    disp([num2str(length(badDTPos)) ' of ' num2str(length(digitalTimeStamps)) ' (' num2str(100*length(badDTPos)/length(digitalTimeStamps),2) '%) are separated by less than ' num2str(1000*deltaLimit) ' ms and will be discarded']);
+    digitalTimeStamps(badDTPos)=[];
+    digitalEvents(badDTPos)=[];
+end
+end
+function [digitalTimeStamps,digitalEvents] = combineGoodCodes(digitalTimeStampsS,digitalEventsS,digitalTimeStampsR,digitalEventsR,deltaLimitMS)
+
+for i=1:length(digitalTimeStampsS)
+    pos = intersect(find(digitalTimeStampsR>=digitalTimeStampsS(i)-deltaLimitMS/1000),find(digitalTimeStampsR<=digitalTimeStampsS(i)+deltaLimitMS/1000));
+    %pos = find(digitalTimeStampsR<=digitalTimeStampsS(i),1,'last');
+    if ~isempty(pos)
+        digitalTimeStamps(i) = digitalTimeStampsS(i);
+        digitalEvents(i) = digitalEventsS(i) + 2^8 *digitalEventsR(pos);
+    else
+        digitalTimeStamps(i) = digitalTimeStampsS(i);
+        digitalEvents(i) = digitalEventsS(i);
+    end
+end
+digitalEvents(digitalEvents==255) = 2^16-1; % if all lower pins are 1, set all upper pins to 1 too. 
 end

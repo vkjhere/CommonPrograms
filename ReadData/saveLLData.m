@@ -13,6 +13,8 @@
 % 10 March 2015: More information is extracted from LL data file because
 % the digital codes are no longer sufficient for EEG data
 
+% 19 March 2015: Adding endTime (trialEnd).
+
 function LLFileExistsFlag = saveLLData(subjectName,expDate,protocolName,folderSourceString,gridType)
 
 datFileName = fullfile(folderSourceString,'data','rawData',[subjectName expDate],[subjectName expDate protocolName '.dat']);
@@ -190,6 +192,7 @@ temporalFreqHz = [];
 
 eotCode=[];
 myEotCode=[];
+endTime=[];
 startTime=[];
 instructTrial=[];
 catchTrial=[];
@@ -211,6 +214,7 @@ for i=1:numTrials
     
     if isfield(trials,'trialEnd')
         eotCode = [eotCode [trials.trialEnd.data]];
+        endTime = [endTime [trials.trialEnd.timeMS]];
     end
     
     if isfield(trials,'myTrialEnd')
@@ -277,6 +281,7 @@ end
 LL.eotCode = eotCode;
 LL.myEotCode = myEotCode;
 LL.startTime = startTime/1000; % in seconds
+LL.endTime = endTime/1000; % in seconds
 LL.instructTrial = instructTrial;
 LL.catchTrial = catchTrial;
 LL.trialCertify = trialCertify;

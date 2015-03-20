@@ -16,7 +16,7 @@ xD = diff(xD); lxD = length(xD); xD=xD(:);
 xL = diff(xL); lxL = length(xL); xL=xL(:);
 
 if lxD == lxL
-    disp(['Number of startTrials: ' num2str(lxD)]);
+    disp(['Number of startTrials: ' num2str(lxD+1)]);
     subplot(221)
     plot(xD,'b.'); hold on; plot(xL,'ro'); hold off;
     ylabel('Difference in Start Times (s)');
