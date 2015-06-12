@@ -1,7 +1,7 @@
-function getReceptiveFields(subjectName,expDate,protocolName,folderSourceString,gridType,measure,removeAvgRef)
+function getReceptiveFields(subjectName,expDate,protocolName,folderSourceString,gridType,measure,removeAvgRef,numPoolingOptions)
 
-if ~exist('removeAvgRef','var');         removeAvgRef=0;                 end
-
+if ~exist('removeAvgRef','var');         removeAvgRef=0;                end
+if ~exist('numPoolingOptions','var');    numPoolingOptions=3;           end
 % foldername
 folderName = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName);
 folderExtract = fullfile(folderName,'extractedData');
@@ -19,25 +19,25 @@ end
 load(fullfile(folderOut,['rfValues' fileTag '.mat']));
 if strcmpi(measure,'LFP') || strcmpi(measure,'CSD') || strcmpi(measure,'Spikes')
     numTimeRanges = size(rfValsRMS,4); %#ok<*NODEF>
-elseif strcmpi(measure,'Energy')
+elseif strncmpi(measure,'Energy',6)
     load(fullfile(folderOut,['rfValues' num2str(electrodeList(1)) fileTag '.mat']));
     numTimeRanges = size(rfValsRMS,3);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% if strcmpi(measure,'LFP') || strcmpi(measure,'CSD')
-% %    load(fullfile(folderSegment,'LFP','lfpInfo.mat'));
-%     channelNumbers = analogChannelsStored;
-% elseif strcmpi(measure,'Spikes')
-% %    load(fullfile(folderSegment,'Spikes','spikeInfo.mat'));
-%     channelNumbers = neuralChannelsStored;
-% elseif strcmpi(measure,'Energy')
-%     channelNumbers = goodElectrodes;
-% end
-channelNumbers=electrodeList;
+if strcmpi(measure,'LFP') || strcmpi(measure,'CSD')
+   load(fullfile(folderSegment,'LFP','lfpInfo.mat'));
+    channelNumbers = analogChannelsStored;
+elseif strcmpi(measure,'Spikes')
+   load(fullfile(folderSegment,'Spikes','spikeInfo.mat'));
+    channelNumbers = neuralChannelsStored;
+elseif strcmpi(measure,'Energy')
+    channelNumbers = goodElectrodes;
+end
+% channelNumbers=electrodeList;
 
 if strcmpi(measure,'LFP') || strcmpi(measure,'CSD') || strcmpi(measure,'Spikes')
-    for poolingOption=1:3
+    for poolingOption=1:numPoolingOptions
         clear paramsRMS paramsMax paramsPower
         
         for i=1:length(channelNumbers)
@@ -75,7 +75,7 @@ if strcmpi(measure,'LFP') || strcmpi(measure,'CSD') || strcmpi(measure,'Spikes')
         end
     end
     
-elseif strcmpi(measure,'Energy')
+elseif strncmpi(measure,'Energy',6)
     
     numFreqPos = length(downsampledFreqVals);
     
@@ -84,7 +84,7 @@ elseif strcmpi(measure,'Energy')
         clear rfValsRMS rfValsMax rfValsPower
         load(fullfile(folderOut,['rfValues' num2str(channelNumber) fileTag '.mat']));
  
-        for poolingOption=1:3
+        for poolingOption=1:numPoolingOptions
             disp([channelNumber poolingOption]);
             clear paramsRMS paramsMax paramsPower paramsRMSScaled paramsMaxScaled paramsPowerScaled
             
