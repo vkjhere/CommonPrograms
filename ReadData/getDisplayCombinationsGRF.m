@@ -1,7 +1,7 @@
 % This program generates the parameterCombinations variable from the
 % stimResults
 function parameterCombinations = getDisplayCombinationsGRF(folderOut,goodStimNums)
-
+  
 load(fullfile(folderOut,'stimResults.mat'));
 
 % Five parameters are chosen:
@@ -25,7 +25,11 @@ parameters{7} = 'temporalFrequency'; %#ok<NASGU>
 % get Contrast
 aValsAll  = stimResults.azimuth;
 eValsAll  = stimResults.elevation;
-sValsAll  = stimResults.sigma;
+if isfield(stimResults,'radius')
+    sValsAll  = stimResults.radius/3;
+else
+    sValsAll  = stimResults.sigma;
+end
 fValsAll  = stimResults.spatialFrequency;
 oValsAll  = stimResults.orientation;
 cValsAll  = stimResults.contrast;

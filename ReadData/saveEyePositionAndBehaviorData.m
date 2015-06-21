@@ -141,7 +141,7 @@ minFixationDurationMS = round((1-header.behaviorSetting.data.fixateJitterPC/100)
 stimDurationMS = header.mapStimDurationMS.data;
 interStimDurationMS = header.mapInterstimDurationMS.data;
 
-eyeRangeMS = [-min(minFixationDurationMS,interStimDurationMS)+1000/Fs stimDurationMS-1000/Fs]; % Around each stimulus onset, data should be available for this range. 1 sample is reduced on each range because sometimes there are minor timing shifts and 1 sample may not be collected.
+eyeRangeMS = [-min(minFixationDurationMS,interStimDurationMS)+1000/Fs stimDurationMS-1000/Fs]; % Around each stimulus onset, data should be available for this range. 2 samples are reduced on each range because sometimes there are minor timing shifts and 2 samples may not be collected.
 eyeRangePos = eyeRangeMS*Fs/1000;
 
 % Stimulus properties
@@ -186,11 +186,16 @@ for i=1:numTrials
             
             % eyeStartTime = trials.eyeXData.timeMS(1);  % This is wrong.
             % The eye data is synchronized with trialStartTime.
-            eyeStartTime = trials.trialStart.timeMS;
+            % eyeStartTime = trials.trialStart.timeMS;
+            
+            % Not any more. Now after trialStart, we sleep for sometime to
+            % send long digital pulses. Now we use the start of eye
+            % calibration as the onset time.
+            eyeStartTime = trials.eyeLeftCalibrationData.timeMS;
             eyeAllTimes = eyeStartTime + (0:(length(eyeX)-1))*(1000/Fs);
             
             stimOnTimes  = [trials.stimulusOnTime.timeMS];
-            numStimuli = allTrials.targetPosAllTrials(trialEndIndex); %=length(stimOnTimes)/3;
+            numStimuli = length(stimOnTimes)/3; % = allTrials.targetPosAllTrials(trialEndIndex); %=length(stimOnTimes)/3;
             
             goodTrials.targetPos(correctIndex) = numStimuli;
             goodTrials.targetTime(correctIndex) = stimOnTimes(end);
@@ -314,7 +319,8 @@ header = readLLFile('i',datFileName);
 minFixationDurationMS = round((1-header.behaviorSetting.data.fixateJitterPC/100) * header.behaviorSetting.data.fixateMS);
 stimDurationMS = header.mapStimDurationMS.data;
 interStimDurationMS = header.mapInterstimDurationMS.data;
-maxStimPos = ceil(header.maxTargetTimeMS.data)/(stimDurationMS+interStimDurationMS) +1;
+responseTimeMS = header.responseTimeMS.data;
+maxStimPos = ceil(header.maxTargetTimeMS.data + responseTimeMS)/(stimDurationMS+interStimDurationMS) +1;
 
 durationsMS.minFixationDurationMS = minFixationDurationMS;
 durationsMS.interStimDurationMS = interStimDurationMS;
@@ -344,18 +350,21 @@ for i=1:numTrials
             eX = trial.eyeXData.data';
             eY = trial.eyeYData.data';
             cal=trial.eyeCalibrationData.data.cal;
+            timeStartMS = trial.eyeCalibrationData.timeMS;
         elseif isfield(trial,'eyeRXData')
             eX = trial.eyeRXData.data';
             eY = trial.eyeRYData.data';
             cal=trial.eyeRightCalibrationData.data.cal;
+            timeStartMS = trial.eyeRightCalibrationData.timeMS;
         elseif isfield(trial,'eyeLXData')
             eX = trial.eyeLXData.data';
             eY = trial.eyeLYData.data';
             cal=trial.eyeLeftCalibrationData.data.cal;
+            timeStartMS = trial.eyeLeftCalibrationData.timeMS;
         end
         
         if isCatchTrial
-            numUsefulStim = trial.trial.data.targetIndex+1; % these are the useful stimuli, including target.
+            numUsefulStim = trial.trial.data.numStim; % these are the useful stimuli, including target.
         else
             numUsefulStim = trial.trial.data.targetIndex; % these are the useful stimuli, excluding target.
         end
@@ -365,7 +374,7 @@ for i=1:numTrials
         
         if numUsefulStim>0
             for j=1:numUsefulStim
-                stimOnsetPos = ceil((stimOnTimes(gaborPos(j)) - trial.trialStart.timeMS)/intervalTimeMS);
+                stimOnsetPos = ceil((stimOnTimes(gaborPos(j)) - timeStartMS)/intervalTimeMS);
                 
                 stp = -(minFixationDurationMS + (j-1)*(stimDurationMS+interStimDurationMS))/intervalTimeMS + 1;                  
                 edp = stimDurationMS/intervalTimeMS - 1;

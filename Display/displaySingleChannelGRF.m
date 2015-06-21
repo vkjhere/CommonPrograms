@@ -1231,6 +1231,7 @@ else
 end
 plot(hcenterRFMapPlot,aziCenter,eleCenter,[plotColor '+']);
 title(hcenterRFMapPlot,['Loc: (' num2str(aziCenter) ',' num2str(eleCenter) '), Size: ' num2str(RFSize)]);
+disp(['Loc: (' num2str(aziCenter) ',' num2str(eleCenter) '), Size: ' num2str(RFSize)]);
 axis(hcenterRFMapPlot,[aValsUnique(1) aValsUnique(end) eValsUnique(1) eValsUnique(end)]);
 
 end

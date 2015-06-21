@@ -1,7 +1,9 @@
-function getReceptiveFields(subjectName,expDate,protocolName,folderSourceString,gridType,measure,removeAvgRef,numPoolingOptions)
+function getReceptiveFields(subjectName,expDate,protocolName,folderSourceString,gridType,measure,removeAvgRef,poolingOptionsList,filterStr)
 
 if ~exist('removeAvgRef','var');         removeAvgRef=0;                end
-if ~exist('numPoolingOptions','var');    numPoolingOptions=3;           end
+if ~exist('poolingOptionsList','var');   poolingOptionsList=1:3;        end
+if ~exist('filterStr','var');            filterStr='';                  end
+
 % foldername
 folderName = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName);
 folderExtract = fullfile(folderName,'extractedData');
@@ -16,7 +18,7 @@ else
     fileTag = '';
 end
 
-load(fullfile(folderOut,['rfValues' fileTag '.mat']));
+load(fullfile(folderOut,['rfValues' fileTag filterStr '.mat']));
 if strcmpi(measure,'LFP') || strcmpi(measure,'CSD') || strcmpi(measure,'Spikes')
     numTimeRanges = size(rfValsRMS,4); %#ok<*NODEF>
 elseif strncmpi(measure,'Energy',6)
@@ -37,14 +39,15 @@ end
 % channelNumbers=electrodeList;
 
 if strcmpi(measure,'LFP') || strcmpi(measure,'CSD') || strcmpi(measure,'Spikes')
-    for poolingOption=1:numPoolingOptions
-        clear paramsRMS paramsMax paramsPower
+    for ii=1:length(poolingOptionsList)
+        poolingOption = poolingOptionsList(ii);
+        clear paramsRMS paramsMax paramsPower paramsMean paramsMin
         
         for i=1:length(channelNumbers)
             channelNumber = channelNumbers(i);
             
             for j=1:numTimeRanges
-                clear rfValsRMStmp rfValsMaxtmp rfValsPowertmp rfValsMeantmp
+                clear rfValsRMStmp rfValsMaxtmp rfValsPowertmp rfValsMeantmp rfValsMintmp
                 rfValsRMStmp = squeeze(rfValsRMS(:,:,channelNumber,j));
                 rfValsMaxtmp = squeeze(rfValsMax(:,:,channelNumber,j));
                 
@@ -58,6 +61,11 @@ if strcmpi(measure,'LFP') || strcmpi(measure,'CSD') || strcmpi(measure,'Spikes')
                     rfValsPowertmp = squeeze(rfValsPower(:,:,channelNumber,j));
                     paramsPower{channelNumber,j} = getRFcenter(aValsUnique,eValsUnique,rfValsPowertmp,poolingOption);
                     paramsPowerScaled{channelNumber,j} = getRFcenter(aValsUnique,eValsUnique,rfValsPowertmp,poolingOption,numStimuli);
+                    
+                    rfValsMintmp = squeeze(rfValsMin(:,:,channelNumber,j));
+                    paramsMin{channelNumber,j} = getRFcenter(aValsUnique,eValsUnique,rfValsMintmp,poolingOption);
+                    paramsMinScaled{channelNumber,j} = getRFcenter(aValsUnique,eValsUnique,rfValsMintmp,poolingOption,numStimuli);
+                    
                 elseif strcmp(measure,'Spikes')
                     rfValsMeantmp = squeeze(rfValsMean(:,:,channelNumber,j));
                     paramsMean{channelNumber,j} = getRFcenter(aValsUnique,eValsUnique,rfValsMeantmp,poolingOption);
@@ -67,10 +75,10 @@ if strcmpi(measure,'LFP') || strcmpi(measure,'CSD') || strcmpi(measure,'Spikes')
         end
         
         if strcmp(measure,'LFP') || strcmp(measure,'CSD')
-            save(fullfile(folderOut,['rfParams' fileTag num2str(poolingOption) '.mat']),'paramsRMS','paramsMax','paramsPower', ...
-                'paramsRMSScaled','paramsMaxScaled','paramsPowerScaled','aValsUnique','eValsUnique');
+            save(fullfile(folderOut,['rfParams' fileTag num2str(poolingOption) filterStr '.mat']),'paramsRMS','paramsMax','paramsPower','paramsMin', ...
+                'paramsRMSScaled','paramsMaxScaled','paramsPowerScaled','paramsMinScaled','aValsUnique','eValsUnique');
         elseif strcmp(measure,'Spikes')
-            save(fullfile(folderOut,['rfParams' num2str(poolingOption) '.mat']),'paramsRMS','paramsMax','paramsMean', ...
+            save(fullfile(folderOut,['rfParams' num2str(poolingOption) filterStr '.mat']),'paramsRMS','paramsMax','paramsMean', ...
                 'paramsRMSScaled','paramsMaxScaled','paramsMeanScaled','aValsUnique','eValsUnique');
         end
     end
@@ -84,7 +92,8 @@ elseif strncmpi(measure,'Energy',6)
         clear rfValsRMS rfValsMax rfValsPower
         load(fullfile(folderOut,['rfValues' num2str(channelNumber) fileTag '.mat']));
  
-        for poolingOption=1:numPoolingOptions
+        for ii=1:length(poolingOptionsList)
+            poolingOption = poolingOptionsList(ii);
             disp([channelNumber poolingOption]);
             clear paramsRMS paramsMax paramsPower paramsRMSScaled paramsMaxScaled paramsPowerScaled
             
