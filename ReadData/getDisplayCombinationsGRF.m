@@ -36,10 +36,6 @@ cValsAll  = stimResults.contrast;
 tValsAll  = stimResults.temporalFrequency;
 
 if ~isempty(aValsAll)
-    % Get good stim
-    if ~exist('goodStimNums','var')
-        goodStimNums = getGoodStimNumsGRF(folderOut);
-    end
 
     aValsGood = aValsAll(goodStimNums);
     eValsGood = eValsAll(goodStimNums);
