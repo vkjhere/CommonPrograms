@@ -1,7 +1,16 @@
-function displayLLInforAllDaysSRC(monkeyName,expDates,protocolNames,folderSourceString,gridType,fileStr,removeBreaks,removeIgnores)
+function displayLLInforAllDaysSRC(subjectName,expDates,protocolNames,folderSourceString,gridType,removeBreaks,removeIgnores)
+
+if ~exist('removeBreaks','var');            removeBreaks=0;             end
+if ~exist('removeIgnores','var');           removeIgnores=0;            end
+
+if ~iscell(expDates)
+    [expDates,protocolNames] = convertToCell(expDates,protocolNames);
+end
+
+fileStr = getFileStr(subjectName,expDates,protocolNames,folderSourceString,gridType);
 
 % Choose day
-dayString = getDayString(monkeyName,expDates,protocolNames);
+dayString = getDayString(subjectName,expDates,protocolNames);
 hChooseDay = uicontrol('Unit','Normalized','Position',[0.85 0.9 0.1 0.1],...
     'Style','popup','String',dayString,'Callback',{@plotData_callBack});
 
@@ -25,7 +34,7 @@ tableLabels{2,1} = 'Azimuth';
 tableLabels{3,1} = 'Elevation';
 tableLabels{4,1} = 'Orientation';
 tableLabels{5,1} = 'Spatial F';
-tableLabels{6,1} = 'Sigma';
+tableLabels{6,1} = 'Sigma/Radius';
 tableLabels{7,1} = 'Day Num';
 makeTable(tableLabelGrid,tableLabels);
 
@@ -34,11 +43,11 @@ tableGrid = [LLBarGrid(1) 0.45 numDays*dX 0.2];
 tableEntries = cell(7,numDays);
 for i=1:numDays
     tableEntries{1,i} = [expDates{i}(1:2) '/' expDates{i}(3:4)];
-    tableEntries{2,i} = num2str(fileStr(i).azimuth);
-    tableEntries{3,i} = num2str(fileStr(i).elevation);
-    tableEntries{4,i} = num2str(fileStr(i).orientationDeg);
-    tableEntries{5,i} = num2str(fileStr(i).spatialFreqCPD);
-    tableEntries{6,i} = num2str(fileStr(i).sigmaDeg);
+    tableEntries{2,i} = [num2str(fileStr(i).azimuth0Deg) '/' num2str(fileStr(i).azimuth1Deg)];
+    tableEntries{3,i} = [num2str(fileStr(i).elevation0Deg) '/' num2str(fileStr(i).elevation1Deg)];
+    tableEntries{4,i} = [num2str(fileStr(i).orientation0Deg) '/' num2str(fileStr(i).orientation1Deg)];
+    tableEntries{5,i} = [num2str(fileStr(i).spatialFreq0CPD) '/' num2str(fileStr(i).spatialFreq1CPD)];
+    tableEntries{6,i} = [num2str(fileStr(i).sigmaDeg) '/' num2str(fileStr(i).radiusDeg)];
     tableEntries{7,i} = num2str(i);
 end
 makeTable(tableGrid,tableEntries);
@@ -46,11 +55,11 @@ makeTable(tableGrid,tableEntries);
 %%% Plotting with default values of removeBreaks and removeIgnores
 for i=1:numDays
     gridPositionLLBar = [LLBarGrid(1)+(i-1)*dX LLBarGrid(2) dX LLBarGrid(4)];
-    displayLLbarSRC(monkeyName,expDates{i},protocolNames{i},folderSourceString,gridType,gridPositionLLBar,removeBreaks,removeIgnores);
+    displayLLbarSRC(subjectName,expDates{i},protocolNames{i},folderSourceString,gridType,gridPositionLLBar,removeBreaks,removeIgnores);
 end
 
 gridPositionLLBar = [LLBarGrid(1)+(numDays+1)*dX LLBarGrid(2) dX LLBarGrid(4)];
-displayLLbarSRC(monkeyName,expDates,protocolNames,folderSourceString,gridType,gridPositionLLBar,removeBreaks,removeIgnores);
+displayLLbarSRC(subjectName,expDates,protocolNames,folderSourceString,gridType,gridPositionLLBar,removeBreaks,removeIgnores);
 
 
 % Plot performance as a function of target Position
@@ -60,12 +69,12 @@ gridPositionCorrect{1}             = [0.3 0.25 0.15 0.125]; % For target positio
 gridPositionCorrect{2}             = [0.3 0.05 0.15 0.15]; % For target position
 
 displayTargetInfo(gridPositionPerformanceVsTargetPos,gridPositionPercentTargets,gridPositionCorrect,...
-    monkeyName,expDates,protocolNames,folderSourceString,gridType,removeBreaks,removeIgnores);
+    subjectName,expDates,protocolNames,folderSourceString,gridType,removeBreaks,removeIgnores);
 
 % Fixation window histogram
 allFixationData=[];
 for i=1:numDays
-    folderNameTmp = [folderSourceString 'data\' monkeyName '\' gridType '\' expDates{i} '\' protocolNames{i} '\'];
+    folderNameTmp = fullfile(folderSourceString,'data',subjectName,gridType,expDates{i},protocolNames{i});
     [~,fixWindowSizeAllTrials] = getFixationWindowData(folderNameTmp);
     allFixationData=cat(2,allFixationData,fixWindowSizeAllTrials);
 end
@@ -86,29 +95,29 @@ gridPositionReactTimes = [0.75 0.05 0.2 0.15];
         
         for ii=1:numDays
             gridPositionLLBar = [LLBarGrid(1)+(ii-1)*dX LLBarGrid(2) dX LLBarGrid(4)];
-            displayLLbarSRC(monkeyName,expDates{ii},protocolNames{ii},folderSourceString,gridType,gridPositionLLBar,removeBreaks,removeIgnores);
+            displayLLbarSRC(subjectName,expDates{ii},protocolNames{ii},folderSourceString,gridType,gridPositionLLBar,removeBreaks,removeIgnores);
         end
 
         gridPositionLLBar = [LLBarGrid(1)+(numDays+1)*dX LLBarGrid(2) dX LLBarGrid(4)];
-        displayLLbarSRC(monkeyName,expDates,protocolNames,folderSourceString,gridType,gridPositionLLBar,removeBreaks,removeIgnores);
+        displayLLbarSRC(subjectName,expDates,protocolNames,folderSourceString,gridType,gridPositionLLBar,removeBreaks,removeIgnores);
         
         num = get(hChooseDay,'val');
         
         if num<=numDays
             %histContrast = fileStr(num).contrastPC0;
             displayTargetInfo(gridPositionPerformanceVsTargetPos,gridPositionPercentTargets,gridPositionCorrect,...
-            monkeyName,expDates{num},protocolNames{num},folderSourceString,gridType,removeBreaks,removeIgnores);
-            [~,fixationData] = getFixationWindowData([folderSourceString 'data\' monkeyName '\' gridType '\' expDates{num} '\' protocolNames{num} '\']);
+            subjectName,expDates{num},protocolNames{num},folderSourceString,gridType,removeBreaks,removeIgnores);
+            [~,fixationData] = getFixationWindowData(fullfile(folderSourceString,'data',subjectName,gridType,expDates{num},protocolNames{num}));
             
-            displayLLInfoSRCPsyAndReactInfo(monkeyName,expDates{num},protocolNames{num},folderSourceString,gridType, ...
+            displayLLInfoSRCPsyAndReactInfo(subjectName,expDates{num},protocolNames{num},folderSourceString,gridType, ...
             gridPositionTemporalInfo,gridPositionTargetInfo,gridPositionPsy,gridPositionReactTimes);
         else
             %histContrast = allContrasts;
             displayTargetInfo(gridPositionPerformanceVsTargetPos,gridPositionPercentTargets,gridPositionCorrect,...
-            monkeyName,expDates,protocolNames,folderSourceString,gridType,removeBreaks,removeIgnores);
+            subjectName,expDates,protocolNames,folderSourceString,gridType,removeBreaks,removeIgnores);
             fixationData = allFixationData;
             
-            displayLLInfoSRCPsyAndReactInfo(monkeyName,expDates,protocolNames,folderSourceString,gridType, ...
+            displayLLInfoSRCPsyAndReactInfo(subjectName,expDates,protocolNames,folderSourceString,gridType, ...
             gridPositionTemporalInfo,gridPositionTargetInfo,gridPositionPsy,gridPositionReactTimes);
         end
         %plotHistogram(hContrastHist,histContrast,'Contrast (%)');
@@ -121,31 +130,29 @@ gridPositionReactTimes = [0.75 0.05 0.2 0.15];
         if num<=numDays
             %histContrast = fileStr(num).contrastPC0;
             displayTargetInfo(gridPositionPerformanceVsTargetPos,gridPositionPercentTargets,gridPositionCorrect,...
-            monkeyName,expDates{num},protocolNames{num},folderSourceString,gridType,removeBreaks,removeIgnores);
-            [~,fixationData] = getFixationWindowData([folderSourceString 'data\' monkeyName '\' gridType '\' expDates{num} '\' protocolNames{num} '\']);
+            subjectName,expDates{num},protocolNames{num},folderSourceString,gridType,removeBreaks,removeIgnores);
+            [~,fixationData] = getFixationWindowData(fullfile(folderSourceString,'data',subjectName,gridType,expDates{num},protocolNames{num}));
             
-            displayLLInfoSRCPsyAndReactInfo(monkeyName,expDates{num},protocolNames{num},folderSourceString,gridType, ...
+            displayLLInfoSRCPsyAndReactInfo(subjectName,expDates{num},protocolNames{num},folderSourceString,gridType, ...
             gridPositionTemporalInfo,gridPositionTargetInfo,gridPositionPsy,gridPositionReactTimes);
         else
             %histContrast = allContrasts;
             displayTargetInfo(gridPositionPerformanceVsTargetPos,gridPositionPercentTargets,gridPositionCorrect,...
-            monkeyName,expDates,protocolNames,folderSourceString,gridType,removeBreaks,removeIgnores);
+            subjectName,expDates,protocolNames,folderSourceString,gridType,removeBreaks,removeIgnores);
             fixationData = allFixationData;
             
-            displayLLInfoSRCPsyAndReactInfo(monkeyName,expDates,protocolNames,folderSourceString,gridType,...
+            displayLLInfoSRCPsyAndReactInfo(subjectName,expDates,protocolNames,folderSourceString,gridType,...
             gridPositionTemporalInfo,gridPositionTargetInfo,gridPositionPsy,gridPositionReactTimes);
         end
         %plotHistogram(hContrastHist,histContrast,'Contrast (%)');
         plotHistogram(hFixationHist,fixationData/2,'Fixation Window (Deg)');
     end
 end
-function displayLLbarSRC(monkeyName,expDates,protocolNames,folderSourceString,gridType,gridPositionLLBar,removeBreaks,removeIgnores)
+function displayLLbarSRC(subjectName,expDates,protocolNames,folderSourceString,gridType,gridPositionLLBar,removeBreaks,removeIgnores)
 
 %Fonts
 fontSizeMedium=12;
 textPosX = 0.5; textPosY = 1.2;
-
-folderSourceString = appendIfNotPresent(folderSourceString,'\');
 
 if iscell(expDates)
     allEOTCodes=[];
@@ -154,14 +161,14 @@ if iscell(expDates)
         clear expDate protocolName
         expDate=expDates{i};
         protocolName=protocolNames{i};
-        load([folderSourceString 'data\' monkeyName '\' gridType '\' expDate '\' protocolName '\extractedData\LL.mat']);
+        load(fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName,'extractedData','LL.mat'));
         allEOTCodes = cat(2,allEOTCodes,LL.eotCode);
         allAttendLoc= cat(2,allAttendLoc,LL.attendLoc);
     end
 else
     expDate=expDates;
     protocolName=protocolNames;
-    load([folderSourceString 'data\' monkeyName '\' gridType '\' expDate '\' protocolName '\extractedData\LL.mat']); % Single day
+    load(fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName,'extractedData','LL.mat')); % Single day
     allEOTCodes = [LL.eotCode];
     allAttendLoc= [LL.attendLoc];
 end
@@ -190,11 +197,11 @@ text(0.4,0.9,[num2str(mean(histContrast)) ' +- ' num2str(std(histContrast))],'Un
 xlabel(xLabelStr);
 axis tight
 end
-function dayString=getDayString(monkeyName,expDates,protocolNames)
+function dayString=getDayString(subjectName,expDates,protocolNames)
 
 dayString = '';
 for i=1:length(expDates)
-    dayString = cat(2,dayString,[ num2str(i) ' ' monkeyName expDates{i} protocolNames{i} '|']);
+    dayString = cat(2,dayString,[ num2str(i) ' ' subjectName expDates{i} protocolNames{i} '|']);
 end
 dayString = [dayString 'all days'];
 end
@@ -203,16 +210,16 @@ function [fixWindowSizeEyeStims,fixWindowSizeGoodStims] = getFixationWindowData(
 % which we analyze the energy of the eye Data.
 % fixWindowSizeGoodStims - fixation window size for all good stimuli
 % Get the fixationWindowSizes
-load([folderNameMain 'extractedData\BehaviorData.mat']); % returns the variable allTrials
+load(fullfile(folderNameMain,'extractedData','BehaviorData.mat')); % returns the variable allTrials
 
 % Get the stimResults
-load([folderNameMain 'extractedData\stimResults.mat']); % returns the variable stimResults
+load(fullfile(folderNameMain,'extractedData','stimResults.mat')); % returns the variable stimResults
 
 % Get goodStimNums
-load([folderNameMain 'extractedData\goodStimNums.mat']); % returns the variable goodStimNums
+load(fullfile(folderNameMain,'extractedData','goodStimNums.mat')); % returns the variable goodStimNums
 
-if exist([folderNameMain 'extractedData\validStimAfterTarget.mat'],'file')
-    load ([folderNameMain 'extractedData\validStimAfterTarget.mat']);
+if exist(fullfile(folderNameMain,'extractedData','validStimAfterTarget.mat'),'file')
+    load (fullfile(folderNameMain,'extractedData','validStimAfterTarget.mat'));
     goodStimNums(validStimuliAfterTarget)=[];  % Get rid of these stimuli
 end
 
@@ -221,7 +228,7 @@ fixWindowSizeGoodStims = allTrials.fixWindowSize(stimResults.trialNumber(goodSti
 
 fixWindowSizeEyeStims = fixWindowSizeGoodStims(stimPos>1);
 end
-function displayLLInfoSRCPsyAndReactInfo(monkeyName,expDates,protocolNames,folderSourceString,gridType,...
+function displayLLInfoSRCPsyAndReactInfo(subjectName,expDates,protocolNames,folderSourceString,gridType,...
    gridPositionTemporalInfo,gridPositionTargetInfo,gridPositionPsy,gridPositionReactTimes)
 
 % This is the old program written for the MAC. It is kept only for the SRC
@@ -234,7 +241,7 @@ rightColor = 'b'; %Right
 leftColor  = 'k'; %Left
 
 if ~iscell(expDates)
-    [side0{1},side1{1},eotByType{1},colorNames,contrastIndices{1},correctResults{1},xValsAll{1},reactTimesAll{1}]=getDataForSingleDay(monkeyName,expDates,protocolNames,folderSourceString,gridType);
+    [side0{1},side1{1},eotByType{1},colorNames,contrastIndices{1},correctResults{1},xValsAll{1},reactTimesAll{1}]=getDataForSingleDay(subjectName,expDates,protocolNames,folderSourceString,gridType);
 else
     numDays=length(expDates);
     side0=cell(1,numDays);
@@ -245,7 +252,7 @@ else
     xValsAll=cell(1,numDays);
     reactTimesAll=cell(1,numDays);
     for i=1:numDays
-        [side0{i},side1{i},eotByType{i},colorNames,contrastIndices{i},correctResults{i},xValsAll{i},reactTimesAll{i}]=getDataForSingleDay(monkeyName,expDates{i},protocolNames{i},folderSourceString,gridType);
+        [side0{i},side1{i},eotByType{i},colorNames,contrastIndices{i},correctResults{i},xValsAll{i},reactTimesAll{i}]=getDataForSingleDay(subjectName,expDates{i},protocolNames{i},folderSourceString,gridType);
     end
 end
 
@@ -389,10 +396,10 @@ end
 
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [side0,side1,eotByType,colorNames,contrastIndices,correctResults,xValAll,reactTimesAll]=getDataForSingleDay(monkeyName,expDate,protocolName,folderSourceString,gridType)
+function [side0,side1,eotByType,colorNames,contrastIndices,correctResults,xValAll,reactTimesAll]=getDataForSingleDay(subjectName,expDate,protocolName,folderSourceString,gridType)
         
 folderSourceString = appendIfNotPresent(folderSourceString,'\');
-load([folderSourceString 'data\' monkeyName '\' gridType '\' expDate '\' protocolName '\extractedData\LL.mat']);
+load([folderSourceString 'data\' subjectName '\' gridType '\' expDate '\' protocolName '\extractedData\LL.mat']);
 
 % Temporal Info
 % We get here the number of trials spent on each block
@@ -474,8 +481,8 @@ for i=1:numTF
         for k=1:8
             theseIndices = intersect(find([reactInfo.contrastIndex]==k-1),tmp);
             if ~isempty(theseIndices)
-                xVal(count)  = k-1; %#ok<AGROW>
-                reactTimes(count) = mean([reactInfo(theseIndices).reactTime]); %#ok<AGROW>
+                xVal(count)  = k-1;
+                reactTimes(count) = mean([reactInfo(theseIndices).reactTime]);
                 count=count+1;
             end
         end
@@ -487,6 +494,10 @@ end
 
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [expDates,protocolNames] = convertToCell(expDate,protocolName)
+expDates{1} = expDate;
+protocolNames{1} = protocolName;
+end
 function TFstr = convertToTemporalFreq(tfIndex)
 
 if tfIndex==0
@@ -607,4 +618,22 @@ for i=1:numTFs
     end
 end
 xList=1:7;
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function fileStr = getFileStr(subjectName,expDates,protocolNames,folderSourceString,gridType)
+
+for i=1:length(expDates)
+    load(fullfile(folderSourceString,'data',subjectName,gridType,expDates{i},protocolNames{i},'extractedData','LL.mat'));
+    
+    fileStr(i).azimuth0Deg     = LL.azimuth0Deg; %#ok<*AGROW>
+    fileStr(i).azimuth1Deg     = LL.azimuth1Deg;
+    fileStr(i).elevation0Deg   = LL.elevation0Deg;
+    fileStr(i).elevation1Deg   = LL.elevation1Deg;
+    fileStr(i).orientation0Deg = LL.baseOrientation0Deg;
+    fileStr(i).orientation1Deg = LL.baseOrientation1Deg;
+    fileStr(i).spatialFreq0CPD = LL.spatialFreq0CPD;
+    fileStr(i).spatialFreq1CPD = LL.spatialFreq1CPD;
+    fileStr(i).sigmaDeg = LL.sigmaDeg;
+    fileStr(i).radiusDeg = LL.radiusDeg;
+end
 end

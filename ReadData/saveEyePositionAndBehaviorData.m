@@ -24,11 +24,11 @@ makeDirectory(folderExtract);
 
 if strncmpi(protocolName,'SRC',3) % SRC
     
-%     [allTrials,goodTrials,stimData,eyeData,eyeRangeMS] = getEyePositionAndBehavioralDataSRC(subjectName,expDate,protocolName,folderSourceString,eyeRangeMS{type},FsEye); 
-%     save(fullfile(folderExtract,'BehaviorData.mat'),'allTrials','goodTrials','stimData');
-%     save(fullfile(folderExtract,'EyeData.mat'),'eyeData','eyeRangeMS');
-%     
-%     saveEyeDataInDegSRC(subjectName,expDate,protocolName,folderSourceString,gridType);
+    [allTrials,goodTrials,stimData,eyeData,eyeRangeMS] = getEyePositionAndBehavioralDataSRC(subjectName,expDate,protocolName,folderSourceString,FsEye); 
+    save(fullfile(folderExtract,'BehaviorData.mat'),'allTrials','goodTrials','stimData');
+    save(fullfile(folderExtract,'EyeData.mat'),'eyeData','eyeRangeMS');
+    
+    saveEyeDataInDegSRC(subjectName,expDate,protocolName,folderSourceString,gridType);
 else
 
     [allTrials,goodTrials,stimData,eyeData,eyeRangeMS] = getEyePositionAndBehavioralDataGRF(subjectName,expDate,protocolName,folderSourceString,FsEye); %#ok<*ASGLU,*NASGU>
@@ -40,16 +40,31 @@ end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [allTrials,goodTrials,stimData,eyeData,eyeRangeMS] = getEyePositionAndBehavioralDataSRC(subjectName,expDate,protocolName,folderSourceString,eyeRangeMS,Fs) %#ok<*DEFNU>
+function [allTrials,goodTrials,stimData,eyeData,eyeRangeMS] = getEyePositionAndBehavioralDataSRC(subjectName,expDate,protocolName,folderSourceString,Fs) %#ok<*DEFNU>
 
-if ~exist('eyeRangeMS','var');           eyeRangeMS = [-480 800];       end    % ms
 if ~exist('Fs','var');                   Fs = 200;                      end    % Eye position sampled at 200 Hz.
 
-eyeRangePos = eyeRangeMS*Fs/1000;
 datFileName = fullfile(folderSourceString,'data','rawData',[subjectName expDate],[subjectName expDate protocolName '.dat']);
 
 % Get Lablib data
 header = readLLFile('i',datFileName);
+
+if isfield(header,'cueDurationMS')
+    cueDurationMS    = header.cueDurationMS.data;
+    precueDurationMS = header.precueDurationMS.data;
+    precueJitterPC   = header.precueJitterPC.data;
+else
+    cueDurationMS = 0;
+    precueDurationMS = 500;
+    precueJitterPC   = 0;
+end
+minFixationDurationMS = cueDurationMS + round((1-precueJitterPC/100) * precueDurationMS);
+
+minStimDurationMS = round((1-header.stimJitterPC.data/100) * header.stimDurationMS.data);
+minInterstimDurationMS = round((1-header.interstimJitterPC.data/100) * header.interstimMS.data);
+
+eyeRangeMS = [-min(minFixationDurationMS,minInterstimDurationMS)+1000/Fs minStimDurationMS-1000/Fs]; % Around each stimulus onset, data should be available for this range. 2 samples are reduced on each range because sometimes there are minor timing shifts and 2 samples may not be collected.
+eyeRangePos = eyeRangeMS*Fs/1000;
 
 % Stimulus properties
 numTrials = header.numberOfTrials;
@@ -248,11 +263,11 @@ function saveEyeDataInDegSRC(subjectName,expDate,protocolName,folderSourceString
 % The difference between saveEyeDataInDeg and saveEyeDataInDegSRC is that
 % the frontPad stimuli are also saved in SRC.
 
-folderName    = [folderSourceString 'data\' subjectName '\' gridType '\' expDate '\' protocolName '\'];
-folderExtract = [folderName 'extractedData\'];
+folderName    = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName);
+folderExtract = fullfile(folderName,'extractedData');
 
 clear eyeData 
-load([folderExtract 'EyeData.mat']);
+load(fullfile(folderExtract,'EyeData.mat'));
 
 [eyeDataDegX,eyeDataDegY] = convertEyeDataToDeg(eyeData,1);
 
@@ -262,10 +277,10 @@ for i=1:length(eyeDataDegX)
     eyeSpeedY{i} = [eyeDataDegY{i}(2:lengthEyeSignal)-eyeDataDegY{i}(1:lengthEyeSignal-1);0];
 end
 
-folderSave = [folderName 'segmentedData\eyeData\'];
+folderSave = fullfile(folderName,'segmentedData','eyeData');
 makeDirectory(folderSave);
-save([folderSave 'eyeDataDeg.mat'],'eyeDataDegX','eyeDataDegY');
-save([folderSave 'eyeSpeed.mat'],'eyeSpeedX','eyeSpeedY');
+save(fullfile(folderSave,'eyeDataDeg.mat'),'eyeDataDegX','eyeDataDegY');
+save(fullfile(folderSave,'eyeSpeed.mat'),'eyeSpeedX','eyeSpeedY');
 
 end
 function saveEyeDataInDegGRF(subjectName,expDate,protocolName,folderSourceString,gridType,FsEye)

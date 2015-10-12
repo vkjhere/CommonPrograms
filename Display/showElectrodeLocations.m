@@ -6,7 +6,9 @@ if ~exist('gridType','var');             gridType = 'Microelectrode';   end
 
 if strcmpi(gridType,'ECoG')
     numRows=8;numCols=10;
-else 
+elseif strcmpi(gridType,'EEG')
+    numRows=9;numCols=11;
+else
     numRows=10;numCols=10;
 end
 

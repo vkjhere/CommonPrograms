@@ -90,11 +90,12 @@ else
         stimResults.type1 = LL.stimType1;
         stimResults.contrastIndex = LL.contrastIndex;
         stimResults.temporalFreqIndex = LL.temporalFreqIndex;
+        stimResults.contrast0PC = LL.contrast0PC;
+        stimResults.contrast1PC = LL.contrast1PC;
         stimResults.orientation0Deg = LL.orientation0Deg;
         stimResults.orientation1Deg = LL.orientation1Deg;
         stimResults.temporalFreq0Hz = LL.temporalFreq0Hz;
         stimResults.temporalFreq1Hz = LL.temporalFreq1Hz;
-        stimResults.contrastPC = LL.contrastPC;
     end
 end
 

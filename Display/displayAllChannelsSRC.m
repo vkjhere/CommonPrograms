@@ -1,29 +1,27 @@
 % Display All Channels
-function displayAllChannelsSRC(monkeyName,expDate,protocolName,folderSourceString,gridType)
+function displayAllChannelsSRC(subjectName,expDate,protocolName,folderSourceString,gridType)
 
-if ~exist('folderSourceString','var')   folderSourceString='E:\';       end
-if ~exist('gridType','var')             gridType='ECoG';                end
+if ~exist('folderSourceString','var');   folderSourceString='E:';       end
+if ~exist('gridType','var');             gridType='EEG';                end
 
-folderName = [folderSourceString 'data\' monkeyName '\' gridType '\' expDate '\' protocolName '\'];
+folderName = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName);
 
 % Get folders
-folderName = appendIfNotPresent(folderName,'\');
-folderExtract = [folderName 'extractedData\'];
-folderSegment = [folderName 'segmentedData\'];
-folderLFP = [folderSegment 'LFP\'];
-folderSpikes = [folderSegment 'Spikes\'];
+folderExtract = fullfile(folderName,'extractedData');
+folderSegment = fullfile(folderName,'segmentedData');
+folderLFP = fullfile(folderSegment,'LFP');
+folderSpikes = fullfile(folderSegment,'Spikes');
 
 % load LFP Information
 [analogChannelsStored,timeVals] = loadlfpInfo(folderLFP);
 [neuralChannelsStored,SourceUnitID] = loadspikeInfo(folderSpikes);
 
 % Get Combinations
-[parameterCombinations,cValsUnique,tValsUnique,eValsUnique,...
-    aValsUnique,sValsUnique] = loadParameterCombinations(folderExtract);
+[parameterCombinations,cIndexValsUnique,tIndexValsUnique,eIndexValsUnique,...
+    aIndexValsUnique,sIndexValsUnique] = loadParameterCombinations(folderExtract);
 
 % Get properties of the Stimulus
 stimResults = loadStimResults(folderExtract);
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Display main options
 fontSizeSmall = 10; fontSizeMedium = 12; fontSizeLarge = 16;
@@ -41,24 +39,30 @@ backgroundColor = 'w';
 %%%%%%%%%%%%%%%%%%%%%%%%%%% Static Panel %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% staticTitle = [monkeyName '_' expDate '_' protocolName];
+% staticTitle = [subjectName '_' expDate '_' protocolName];
 % hStaticPanel = uipanel('Title','Information','fontSize', fontSizeLarge, ...
 %    'Unit','Normalized','Position',[staticStartPos panelStartHeight staticPanelWidth panelHeight]);
 % 
-staticText = [{ '   '};
-    {['Monkey Name: ' monkeyName]}; ...
-    {['Date: ' expDate]}; ...
-    {['Protocol Name: ' protocolName]}; ...
-    {'   '}
-    {['Orientation  (Deg): ' num2str(stimResults.orientation)]}; ...
-    {['Spatial Freq (CPD): ' num2str(stimResults.spatialFrequency)]}; ...
-    {['Azimuth      (Deg): ' num2str(stimResults.azimuth)]}; ...
-    {['Elevation    (Deg): ' num2str(stimResults.elevation)]}; ...
-    {['Sigma        (Deg): ' num2str(stimResults.sigma)]}; ...
-    {['Radius       (Deg): ' num2str(stimResults.radius)]}; ...
-    ];
-
-disp(staticText);
+% if isfield(stimResults,'orientation')
+%     oriStr = num2str(stimResults.orientation);
+% else
+%     oriStr = [num2str(stimResults.baseOrientation0) ',' num2str(stimResults.baseOrientation1)];
+% end
+% 
+% staticText = [{ '   '};
+%     {['Monkey Name: ' subjectName]}; ...
+%     {['Date: ' expDate]}; ...
+%     {['Protocol Name: ' protocolName]}; ...
+%     {'   '}
+%     {['Orientation  (Deg): ' oriStr]}; ...
+%     {['Spatial Freq (CPD): ' num2str(stimResults.spatialFrequency)]}; ...
+%     {['Azimuth      (Deg): ' num2str(stimResults.azimuth)]}; ...
+%     {['Elevation    (Deg): ' num2str(stimResults.elevation)]}; ...
+%     {['Sigma        (Deg): ' num2str(stimResults.sigma)]}; ...
+%     {['Radius       (Deg): ' num2str(stimResults.radius)]}; ...
+%     ];
+% 
+% disp(staticText);
 % 
 % uicontrol('Parent',hStaticPanel,'Unit','Normalized', ...
 %     'Position',[0 0 1 1], 'Style','text','String',staticText,'FontSize',fontSizeSmall);
@@ -74,7 +78,7 @@ hDynamicPanel = uipanel('Title','Parameters','fontSize', fontSizeLarge, ...
     'Unit','Normalized','Position',[dynamicStartPos panelStartHeight dynamicPanelWidth panelHeight]);
 
 % Contrast
-contrastString = getContrastString(cValsUnique);
+contrastString = getContrastString(cIndexValsUnique,stimResults);
 uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight],...
     'Style','text','String','Contrast (%)','FontSize',fontSizeSmall);
@@ -84,7 +88,7 @@ hContrast = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Style','popup','String',contrastString,'FontSize',fontSizeSmall);
 
 % Temporal Frequency
-temporalFreqString = getTemporalFreqString(tValsUnique);
+temporalFreqString = getTemporalFreqString(tIndexValsUnique,stimResults);
 uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-2*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
     'Style','text','String','Temporal Freq (Hz)','FontSize',fontSizeSmall);
@@ -94,7 +98,7 @@ hTemporalFreq = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Style','popup','String',temporalFreqString,'FontSize',fontSizeSmall);
 
 % EOT Codes
-EOTCodeString = getEOTCodeString(eValsUnique);
+EOTCodeString = getEOTCodeString(eIndexValsUnique);
 uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-3*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
     'Style','text','String','EOT Code','FontSize',fontSizeSmall);
@@ -104,7 +108,7 @@ hEOTCode = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Style','popup','String',EOTCodeString,'FontSize',fontSizeSmall);
 
 % Attend Loc
-attendLocString = getAttendLocString(aValsUnique);
+attendLocString = getAttendLocString(aIndexValsUnique);
 uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-4*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
     'Style','text','String','Attended Location','FontSize',fontSizeSmall);
@@ -114,7 +118,7 @@ hAttendLoc = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Style','popup','String',attendLocString,'FontSize',fontSizeSmall);
 
 % Stimulus Type
-stimTypeString = getStimTypeString(sValsUnique);
+stimTypeString = getStimTypeString(sIndexValsUnique);
 uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-5*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
     'Style','text','String','Stimulus Type','FontSize',fontSizeSmall);
@@ -270,6 +274,8 @@ uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
 % Get main plot and message handles
 if strcmpi(gridType,'ECoG')
     plotHandles = getPlotHandles(8,10,[0.05 0.05 0.9 0.625]);
+elseif strcmpi(gridType,'EEG')
+    plotHandles = getPlotHandles(9,11,[0.05 0.05 0.9 0.625]);
 else
     plotHandles = getPlotHandles;
 end
@@ -307,12 +313,12 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
                 disp(['responsive: ' num2str(responsiveElectrodes)]);
                 disp(['inhibited : ' num2str(inhibitedElectrodes)]);
                 
-                showElectrodeLocations(electrodeGridPos,responsiveElectrodes,'b',hElectrodes,0,0,gridType);
-                showElectrodeLocations(electrodeGridPos,inhibitedElectrodes,'g',hElectrodes,1,0,gridType);
+                showElectrodeLocations(electrodeGridPos,responsiveElectrodes,'b',hElectrodes,0,0,gridType,subjectName);
+                showElectrodeLocations(electrodeGridPos,inhibitedElectrodes,'g',hElectrodes,1,0,gridType,subjectName);
             else
                 channelsStored = analogChannelsStored;
                 plotLFPData(plotHandles,channelsStored,goodPos,folderLFP,...
-                    analysisType,timeVals,plotColor,blRange,stRange,gridType);
+                    analysisType,timeVals,plotColor,blRange,stRange,gridType,subjectName);
             end
             
             if analysisType<=2 % ERP or spikes
@@ -321,8 +327,8 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
                 xRange = [str2double(get(hFFTMin,'String')) str2double(get(hFFTMax,'String'))];
             end
             
-            yRange = getYLims(plotHandles,channelsStored,gridType);
-            rescaleData(plotHandles,channelsStored,[xRange yRange],gridType);
+            yRange = getYLims(plotHandles,channelsStored,gridType,subjectName);
+            rescaleData(plotHandles,channelsStored,[xRange yRange],gridType,subjectName);
         end
     end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -362,8 +368,8 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
             xRange = [str2double(get(hFFTMin,'String')) str2double(get(hFFTMax,'String'))];
         end
 
-        yRange = getYLims(plotHandles,channelsStored,gridType);
-        rescaleData(plotHandles,channelsStored,[xRange yRange],gridType);
+        yRange = getYLims(plotHandles,channelsStored,gridType,subjectName);
+        rescaleData(plotHandles,channelsStored,[xRange yRange],gridType,subjectName);
     end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function holdOn_Callback(source,~)
@@ -401,7 +407,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main function that plots the data
 function plotLFPData(plotHandles, channelsStored, goodPos, ...
-    folderData, analysisType, timeVals, plotColor,blRange,stRange,gridType)
+    folderData, analysisType, timeVals, plotColor,blRange,stRange,gridType,subjectName)
 
 if isempty(goodPos)
     disp('No entries for this combination..')
@@ -416,16 +422,15 @@ else
     end
 
     for i=1:length(channelsStored)
-        %disp(i)
+        disp(i)
         channelNum = channelsStored(i);
 
         % get position
-        [row,column] = electrodePositionOnGrid(channelNum,gridType);
-
+        [row,column] = electrodePositionOnGrid(channelNum,gridType,subjectName);
 
         if analysisType == 1        % compute ERP
             clear signal analogData
-            load([folderData 'elec' num2str(channelNum)]);
+            load(fullfile(folderData ,['elec' num2str(channelNum)]));
             erp = mean(analogData(goodPos,:),1); %#ok<*NODEF>
 
             %Plot
@@ -475,7 +480,7 @@ else
         channelNum = channelsStored(i);
 
         % get position
-        [row,column] = electrodePositionOnGrid(channelNum,gridType);
+        [row,column] = electrodePositionOnGrid(channelNum,gridType,subjectName);
 
         clear neuralInfo spikeData
         load([folderData 'elec' num2str(channelNum) '_SID' num2str(SourceUnitID(i))]);
@@ -509,7 +514,7 @@ else
     end
 end
 end   
-function yRange = getYLims(plotHandles,channelsStored,gridType)
+function yRange = getYLims(plotHandles,channelsStored,gridType,subjectName)
 
 % Initialize
 yMin = inf;
@@ -518,7 +523,7 @@ yMax = -inf;
 for i=1:length(channelsStored)
     channelNum = channelsStored(i);
     % get position
-    [row,column] = electrodePositionOnGrid(channelNum,gridType);
+    [row,column] = electrodePositionOnGrid(channelNum,gridType,subjectName);
     
     axis(plotHandles(row,column),'tight');
     tmpAxisVals = axis(plotHandles(row,column));
@@ -531,15 +536,14 @@ for i=1:length(channelsStored)
 end
 yRange = [yMin yMax];
 end
-function rescaleData(plotHandles,channelsStored,axisLims,gridType)
+function rescaleData(plotHandles,channelsStored,axisLims,gridType,subjectName)
 
 [numRows,numCols] = size(plotHandles);
 labelSize=12;
 for i=1:length(channelsStored)
     channelNum = channelsStored(i);
     % get position
-    [row,column] = electrodePositionOnGrid(channelNum,gridType);
-    
+    [row,column] = electrodePositionOnGrid(channelNum,gridType,subjectName);
     
     axis(plotHandles(row,column),axisLims);
     if (row==numRows && rem(column,2)==1)
@@ -561,88 +565,114 @@ set(plotHandles(numRows,numCols),'XTickLabel',[],'YTickLabel',[]);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function contrastString = getContrastString(cValsUnique)
-
-if length(cValsUnique)==1
-    if cValsUnique ==0
-        contrastString = '0';
+function contrastString = getContrastString(cIndexValsUnique,stimResults)
+if isfield(stimResults,'contrast0PC')
+    [cVals0Unique,cVals1Unique] = getValsFromIndex(cIndexValsUnique,stimResults,'contrast');
+    if length(cVals0Unique)==1
+        contrastString = [num2str(cVals0Unique) ',' num2str(cVals1Unique)];
     else
-        contrastString = num2str(100/2^(7-cValsUnique));
-    end
-
-else
-    contrastString = '';
-    for i=1:length(cValsUnique)
-        if cValsUnique(i) == 0
-            contrastString = cat(2,contrastString,[ '0|']); %#ok<*NBRAK>
-        else
-            contrastString = cat(2,contrastString,[num2str(100/2^(7-cValsUnique(i))) '|']);
+        contrastString = '';
+        for i=1:length(cVals0Unique)
+            contrastString = cat(2,contrastString,[num2str(cVals0Unique(i)) ',' num2str(cVals1Unique(i)) '|']);
         end
+        contrastString = [contrastString 'all'];
     end
-    contrastString = [contrastString 'all'];
-end
-end
-function temporalFreqString = getTemporalFreqString(tValsUnique)
-
-if length(tValsUnique)==1
-    if tValsUnique ==0
-        temporalFreqString = '0';
+    
+else % Work with indices
+    if length(cIndexValsUnique)==1
+        if cIndexValsUnique ==0
+            contrastString = '0';
+        else
+            contrastString = num2str(100/2^(7-cIndexValsUnique));
+        end
+        
     else
-        temporalFreqString = num2str(min(50,80/2^(7-tValsUnique)));
-    end
-
-else
-    temporalFreqString = '';
-    for i=1:length(tValsUnique)
-        if tValsUnique(i) == 0
-            temporalFreqString = cat(2,temporalFreqString,[ '0|']);
-        else
-            temporalFreqString = cat(2,temporalFreqString,[num2str(min(50,80/2^(7-tValsUnique(i)))) '|']);
+        contrastString = '';
+        for i=1:length(cIndexValsUnique)
+            if cIndexValsUnique(i) == 0
+                contrastString = cat(2,contrastString,[ '0|']); %#ok<*NBRAK>
+            else
+                contrastString = cat(2,contrastString,[num2str(100/2^(7-cIndexValsUnique(i))) '|']);
+            end
         end
+        contrastString = [contrastString 'all'];
     end
-    temporalFreqString = [temporalFreqString 'all'];
 end
 end
-function EOTCodeString = getEOTCodeString(eValsUnique)
+function temporalFreqString = getTemporalFreqString(tIndexValsUnique,stimResults)
 
-if length(eValsUnique)==1
-    if eValsUnique == 0
+if isfield(stimResults,'temporalFreq0Hz')
+    [tVals0Unique,tVals1Unique] = getValsFromIndex(tIndexValsUnique,stimResults,'temporalFreq');
+    if length(tIndexValsUnique)==1
+        temporalFreqString = [num2str(tVals0Unique) ',' num2str(tVals1Unique)];
+    else
+        temporalFreqString = '';
+        for i=1:length(tIndexValsUnique)
+            temporalFreqString = cat(2,temporalFreqString,[num2str(tVals0Unique(i)) ',' num2str(tVals1Unique(i)) '|']);
+        end
+        temporalFreqString = [temporalFreqString 'all'];
+    end
+else
+    if length(tIndexValsUnique)==1
+        if tIndexValsUnique ==0
+            temporalFreqString = '0';
+        else
+            temporalFreqString = num2str(min(50,80/2^(7-tIndexValsUnique)));
+        end
+        
+    else
+        temporalFreqString = '';
+        for i=1:length(tIndexValsUnique)
+            if tIndexValsUnique(i) == 0
+                temporalFreqString = cat(2,temporalFreqString,[ '0|']);
+            else
+                temporalFreqString = cat(2,temporalFreqString,[num2str(min(50,80/2^(7-tIndexValsUnique(i)))) '|']);
+            end
+        end
+        temporalFreqString = [temporalFreqString 'all'];
+    end
+end
+end
+function EOTCodeString = getEOTCodeString(eIndexValsUnique)
+
+if length(eIndexValsUnique)==1
+    if eIndexValsUnique == 0
         EOTCodeString = 'Correct';
-    elseif eValsUnique == 1
+    elseif eIndexValsUnique == 1
         EOTCodeString = 'Wrong';
-    elseif eValsUnique == 2
+    elseif eIndexValsUnique == 2
         EOTCodeString = 'Failed';
-    elseif eValsUnique == 3
+    elseif eIndexValsUnique == 3
         EOTCodeString = 'Broke';
-    elseif eValsUnique == 4
+    elseif eIndexValsUnique == 4
         EOTCodeString = 'Ignored';
-    elseif eValsUnique == 5
+    elseif eIndexValsUnique == 5
         EOTCodeString = 'False Alarm';
-    elseif eValsUnique == 6
+    elseif eIndexValsUnique == 6
         EOTCodeString = 'Distracted';
-    elseif eValsUnique == 7
+    elseif eIndexValsUnique == 7
         EOTCodeString = 'Force Quit';
     else
         disp('Unknown EOT Code');
     end
 else
     EOTCodeString = '';
-    for i=1:length(eValsUnique)
-        if eValsUnique(i) == 0
+    for i=1:length(eIndexValsUnique)
+        if eIndexValsUnique(i) == 0
             EOTCodeString = cat(2,EOTCodeString,[ 'Correct|']);
-        elseif eValsUnique(i) == 1
+        elseif eIndexValsUnique(i) == 1
             EOTCodeString = cat(2,EOTCodeString,[ 'Wrong|']);
-        elseif eValsUnique(i) == 2
+        elseif eIndexValsUnique(i) == 2
             EOTCodeString = cat(2,EOTCodeString,[ 'Failed|']);
-        elseif eValsUnique(i) == 3
+        elseif eIndexValsUnique(i) == 3
             EOTCodeString = cat(2,EOTCodeString,[ 'Broke|']);
-        elseif eValsUnique(i) == 4
+        elseif eIndexValsUnique(i) == 4
             EOTCodeString = cat(2,EOTCodeString,[ 'Ignored|']);
-        elseif eValsUnique(i) == 5
+        elseif eIndexValsUnique(i) == 5
             EOTCodeString = cat(2,EOTCodeString,[ 'False Alarm|']);
-        elseif eValsUnique(i) == 6
+        elseif eIndexValsUnique(i) == 6
             EOTCodeString = cat(2,EOTCodeString,[ 'Distracted|']);
-        elseif eValsUnique(i) == 7
+        elseif eIndexValsUnique(i) == 7
             EOTCodeString = cat(2,EOTCodeString,[ 'Force Quit|']);
         else
             disp('Unknown EOT Code');
@@ -651,22 +681,22 @@ else
     EOTCodeString = [EOTCodeString 'all'];
 end
 end
-function attendLocString = getAttendLocString(aValsUnique)
+function attendLocString = getAttendLocString(aIndexValsUnique)
 
-if length(aValsUnique)==1
-    if aValsUnique == 0
+if length(aIndexValsUnique)==1
+    if aIndexValsUnique == 0
         attendLocString = '0 (right)';
-    elseif aValsUnique == 1
+    elseif aIndexValsUnique == 1
         attendLocString = '1 (left)';
     else
         disp('Unknown attended location');
     end
 else
     attendLocString = '';
-    for i=1:length(aValsUnique)
-        if aValsUnique(i) == 0
+    for i=1:length(aIndexValsUnique)
+        if aIndexValsUnique(i) == 0
             attendLocString = cat(2,attendLocString,[ '0 (right)|']);
-        elseif aValsUnique(i) == 1
+        elseif aIndexValsUnique(i) == 1
             attendLocString = cat(2,attendLocString,[ '1 (left)|']);
         else
             disp('Unknown attended location');
@@ -675,34 +705,34 @@ else
     attendLocString = [attendLocString 'Both'];
 end
 end
-function stimTypeString = getStimTypeString(sValsUnique)
+function stimTypeString = getStimTypeString(sIndexValsUnique)
 
-if length(sValsUnique)==1
-    if sValsUnique == 0
+if length(sIndexValsUnique)==1
+    if sIndexValsUnique == 0
         stimTypeString = 'Null';
-    elseif sValsUnique == 1
+    elseif sIndexValsUnique == 1
         stimTypeString = 'Correct';
-    elseif sValsUnique == 2
+    elseif sIndexValsUnique == 2
         stimTypeString = 'Target';
-    elseif sValsUnique == 3
+    elseif sIndexValsUnique == 3
         stimTypeString = 'FrontPad';
-    elseif sValsUnique == 4
+    elseif sIndexValsUnique == 4
         stimTypeString = 'BackPad';
     else
         disp('Unknown Stimulus Type');
     end
 else
     stimTypeString = '';
-    for i=1:length(sValsUnique)
-        if sValsUnique(i) == 0
+    for i=1:length(sIndexValsUnique)
+        if sIndexValsUnique(i) == 0
             stimTypeString = cat(2,stimTypeString,['Null|']);
-        elseif sValsUnique(i) == 1
+        elseif sIndexValsUnique(i) == 1
             stimTypeString = cat(2,stimTypeString,['Correct|']);
-        elseif sValsUnique(i) == 2
+        elseif sIndexValsUnique(i) == 2
             stimTypeString = cat(2,stimTypeString,['Target|']);
-        elseif sValsUnique(i) == 3
+        elseif sIndexValsUnique(i) == 3
             stimTypeString = cat(2,stimTypeString,['FrontPad|']);
-        elseif sValsUnique(i) == 4
+        elseif sIndexValsUnique(i) == 4
             stimTypeString = cat(2,stimTypeString,['BackPad|']);
         else
             disp('Unknown Stimulus Type');
@@ -718,20 +748,49 @@ colorNames = 'brkgcmy';
 colorString = 'blue|red|black|green|cyan|magenta|yellow';
 
 end
-
+function [valList0Unique,valList1Unique] = getValsFromIndex(indexListUnique,stimResults,fieldName)
+if isfield(stimResults,[fieldName 'Index'])
+    
+    indexList = getfield(stimResults,[fieldName 'Index']); %#ok<*GFLD>
+    if strcmpi(fieldName,'contrast')
+        valList0 = getfield(stimResults,[fieldName '0PC']);
+        valList1 = getfield(stimResults,[fieldName '1PC']);
+    else
+        valList0 = getfield(stimResults,[fieldName '0Hz']);
+        valList1 = getfield(stimResults,[fieldName '1Hz']);
+    end
+    
+    numList = length(indexListUnique);
+    valList0Unique = zeros(1,numList);
+    valList1Unique = zeros(1,numList);
+    for i=1:numList
+        valList0Unique(i) = unique(valList0(indexListUnique(i)==indexList));
+        valList1Unique(i) = unique(valList1(indexListUnique(i)==indexList));
+    end
+else
+    valList0Unique = indexListUnique;
+    valList1Unique = indexListUnique;
+end
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % load Data
 function [analogChannelsStored,timeVals,goodStimPos] = loadlfpInfo(folderLFP) %#ok<*STOUT>
-load([folderLFP 'lfpInfo']);
+load(fullfile(folderLFP,'lfpInfo.mat'));
 end
 function [neuralChannelsStored,SourceUnitID] = loadspikeInfo(folderSpikes)
-load([folderSpikes 'spikeInfo.mat']);
+fileName = fullfile(folderSpikes,'spikeInfo.mat');
+if exist(fileName,'file')
+    load(fileName);
+else
+    neuralChannelsStored=[];
+    SourceUnitID=[];
+end
 end
 function [parameterCombinations,cValsUnique,tValsUnique,eValsUnique,...
     aValsUnique,sValsUnique] = loadParameterCombinations(folderExtract)
 
-load([folderExtract 'parameterCombinations.mat']);
+load(fullfile(folderExtract,'parameterCombinations.mat'));
 end
 function stimResults = loadStimResults(folderExtract)
-load ([folderExtract 'stimResults']);
+load (fullfile(folderExtract,'stimResults'));
 end

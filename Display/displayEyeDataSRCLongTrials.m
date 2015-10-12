@@ -74,8 +74,11 @@ hTestMethod = uicontrol('Parent',hPlottingPanel,'Unit','Normalized', ...
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Get the parameters. They should be the same for all the days
-folderExtract = [folderSourceString 'data\' monkeyName '\' gridType '\' expDates{1} '\' protocolNames{1} '\extractedData\'];
+folderExtract = fullfile(folderSourceString,'data',monkeyName,gridType,expDates{1},protocolNames{1},'extractedData');
 [~,cValsUnique,tValsUnique,eValsUnique,~,sValsUnique] = loadParameterCombinations(folderExtract);
+
+% Get properties of the Stimulus
+stimResults = loadStimResults(folderExtract);
 
 parameterTextWidth = 0.25; parameterWidth = 0.25;
 hParameterPanel = uipanel('Title','Parameters','fontSize', fontSizeLarge, ...
@@ -107,7 +110,7 @@ uicontrol('Parent',hParameterPanel,'Unit','Normalized', ...
     'Position',[parameterTextWidth+parameterWidth 0.5 parameterTextWidth 0.5], ...
     'Style','text','String','Contrast (%)','FontSize',fontSizeSmall);
 
-contrastString = getContrastString(cValsUnique);
+contrastString = getContrastString(cValsUnique,stimResults);
 hContrast= uicontrol('Parent',hParameterPanel,'Unit','Normalized', ...
     'BackgroundColor', backgroundColor, ...
     'Position', [parameterTextWidth+parameterWidth+parameterTextWidth 0.5 parameterWidth 0.5], ...
@@ -118,7 +121,7 @@ uicontrol('Parent',hParameterPanel,'Unit','Normalized', ...
     'Position',[parameterTextWidth+parameterWidth 0 parameterTextWidth 0.5], ...
     'Style','text','String','TF (Hz)','FontSize',fontSizeSmall);
 
-temporalFreqString = getTemporalFreqString(tValsUnique);
+temporalFreqString = getTemporalFreqString(tValsUnique,stimResults);
 hTemporalFreq = uicontrol('Parent',hParameterPanel,'Unit','Normalized', ...
     'BackgroundColor', backgroundColor, ...
     'Position', [parameterTextWidth+parameterWidth+parameterTextWidth 0 parameterWidth 0.5], ...
@@ -230,7 +233,7 @@ hTMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
  
         % # microsaccades /sec
         for ii=1:2
-            [H,timeValsMS] = psth_SR(MSData{ii},20,xs(1),xs(end));
+            [H,timeValsMS] = getPSTH(MSData{ii},20,[xs(1) xs(end)]);
             plot(hMSPlot,timeValsMS,H,'color',colorNames(ii,:));
             hold(hMSPlot,'on');
         end
@@ -240,7 +243,6 @@ hTMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
         
         % Significance test
         compareAndDisplayMeanData2(numMSInRange,hMSMeanPlot,hMSMeanSigPlot,useThisTestMethod,colorNames);
-        
         
          % if expDates is a cell array (population data, report the p-values
         % of individual days as well.
@@ -278,46 +280,72 @@ for i=1:length(expDates)
 end
 protocolString = [protocolString 'all Days'];
 end
-function contrastString = getContrastString(cValsUnique)
-
-if length(cValsUnique)==1
-    if cValsUnique ==0
-        contrastString = '0';
+function contrastString = getContrastString(cIndexValsUnique,stimResults)
+if isfield(stimResults,'contrast0PC')
+    [cVals0Unique,cVals1Unique] = getValsFromIndex(cIndexValsUnique,stimResults,'contrast');
+    if length(cVals0Unique)==1
+        contrastString = [num2str(cVals0Unique) ',' num2str(cVals1Unique)];
     else
-        contrastString = num2str(100/2^(7-cValsUnique));
-    end
-
-else
-    contrastString = '';
-    for i=1:length(cValsUnique)
-        if cValsUnique(i) == 0
-            contrastString = cat(2,contrastString,'0|');
-        else
-            contrastString = cat(2,contrastString,[num2str(100/2^(7-cValsUnique(i))) '|']);
+        contrastString = '';
+        for i=1:length(cVals0Unique)
+            contrastString = cat(2,contrastString,[num2str(cVals0Unique(i)) ',' num2str(cVals1Unique(i)) '|']);
         end
+        contrastString = [contrastString 'all'];
     end
-    contrastString = [contrastString 'all'];
+    
+else % Work with indices
+    if length(cIndexValsUnique)==1
+        if cIndexValsUnique ==0
+            contrastString = '0';
+        else
+            contrastString = num2str(100/2^(7-cIndexValsUnique));
+        end
+        
+    else
+        contrastString = '';
+        for i=1:length(cIndexValsUnique)
+            if cIndexValsUnique(i) == 0
+                contrastString = cat(2,contrastString,[ '0|']); %#ok<*NBRAK>
+            else
+                contrastString = cat(2,contrastString,[num2str(100/2^(7-cIndexValsUnique(i))) '|']);
+            end
+        end
+        contrastString = [contrastString 'all'];
+    end
 end
 end
-function temporalFreqString = getTemporalFreqString(tValsUnique)
+function temporalFreqString = getTemporalFreqString(tIndexValsUnique,stimResults)
 
-if length(tValsUnique)==1
-    if tValsUnique ==0
-        temporalFreqString = '0';
+if isfield(stimResults,'temporalFreq0Hz')
+    [tVals0Unique,tVals1Unique] = getValsFromIndex(tIndexValsUnique,stimResults,'temporalFreq');
+    if length(tIndexValsUnique)==1
+        temporalFreqString = [num2str(tVals0Unique) ',' num2str(tVals1Unique)];
     else
-        temporalFreqString = num2str(min(50,80/2^(7-tValsUnique)));
-    end
-
-else
-    temporalFreqString = '';
-    for i=1:length(tValsUnique)
-        if tValsUnique(i) == 0
-            temporalFreqString = cat(2,temporalFreqString,'0|');
-        else
-            temporalFreqString = cat(2,temporalFreqString,[num2str(min(50,80/2^(7-tValsUnique(i)))) '|']);
+        temporalFreqString = '';
+        for i=1:length(tIndexValsUnique)
+            temporalFreqString = cat(2,temporalFreqString,[num2str(tVals0Unique(i)) ',' num2str(tVals1Unique(i)) '|']);
         end
+        temporalFreqString = [temporalFreqString 'all'];
     end
-    temporalFreqString = [temporalFreqString 'all'];
+else
+    if length(tIndexValsUnique)==1
+        if tIndexValsUnique ==0
+            temporalFreqString = '0';
+        else
+            temporalFreqString = num2str(min(50,80/2^(7-tIndexValsUnique)));
+        end
+        
+    else
+        temporalFreqString = '';
+        for i=1:length(tIndexValsUnique)
+            if tIndexValsUnique(i) == 0
+                temporalFreqString = cat(2,temporalFreqString,[ '0|']);
+            else
+                temporalFreqString = cat(2,temporalFreqString,[num2str(min(50,80/2^(7-tIndexValsUnique(i)))) '|']);
+            end
+        end
+        temporalFreqString = [temporalFreqString 'all'];
+    end
 end
 end
 function EOTCodeString = getEOTCodeString(eValsUnique)
@@ -417,7 +445,7 @@ end
 function [parameterCombinations,cValsUnique,tValsUnique,eValsUnique,...
     aValsUnique,sValsUnique] = loadParameterCombinations(folderExtract) %#ok<*STOUT>
 
-load([folderExtract 'parameterCombinations.mat']);
+load(fullfile(folderExtract,'parameterCombinations.mat'));
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [eyeX,eyeY,timeValsEyePos,MSData,allEyeSpeeds,numMSInRange] = getSortedEyeData(monkeyName,expDate,protocolName,folderSourceString,gridType,c,t,e,s,cutoff,timeRange)
@@ -443,12 +471,12 @@ allEyeSpeeds=[];
 
 for i=1:length(expDates)
     
-    folderExtract = [folderSourceString 'data\' monkeyName '\' gridType '\' expDates{i} '\' protocolNames{i} '\extractedData\'];
-    folderSegment = [folderSourceString 'data\' monkeyName '\' gridType '\' expDates{i} '\' protocolNames{i} '\segmentedData\'];
+    folderExtract = fullfile(folderSourceString,'data',monkeyName,gridType,expDates{i},protocolNames{i},'extractedData');
+    folderSegment = fullfile(folderSourceString,'data',monkeyName,gridType,expDates{i},protocolNames{i},'segmentedData');
     
     % get timevals for eye position. 
     if i==1
-        load([folderExtract 'EyeData.mat']); % returns the variable 'timeVals'
+        load(fullfile(folderExtract,'EyeData.mat')); % returns the variable 'timeVals'
         if s==1 % valid
             timeValsEyePos   = (eyeRangeMS(1):1000/FsEye:eyeRangeMS(2)-1000/FsEye)/1000;
         elseif s==2
@@ -457,10 +485,10 @@ for i=1:length(expDates)
     end
 
     % eyeData
-    load([folderSegment 'eyeData\eyeDataDeg']);
+    load(fullfile(folderSegment,'eyeData','eyeDataDeg'));
     
     % eyeSpeed
-    load([folderSegment 'eyeData\eyeSpeed']);
+    load(fullfile(folderSegment,'eyeData','eyeSpeed'));
     
     % parameterCombinations
     parameterCombinations = loadParameterCombinations(folderExtract);
@@ -491,7 +519,7 @@ end
 end
 function Y = cell2Array(X,catRows)
 
-if ~exist('catRows','var')          catRows=0;                          end
+if ~exist('catRows','var');          catRows=0;                         end
 
 Y=[];
 for i=1:length(X)
@@ -515,4 +543,32 @@ for i=1:length(testMethods)
     testMethodString = cat(2,testMethodString,[testMethods{i} '|']);
 end
 testMethodString = removeIfPresent(testMethodString,'|');
+end
+function stimResults = loadStimResults(folderExtract)
+load (fullfile(folderExtract,'stimResults'));
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [valList0Unique,valList1Unique] = getValsFromIndex(indexListUnique,stimResults,fieldName)
+if isfield(stimResults,[fieldName 'Index'])
+    
+    indexList = getfield(stimResults,[fieldName 'Index']); %#ok<*GFLD>
+    if strcmpi(fieldName,'contrast')
+        valList0 = getfield(stimResults,[fieldName '0PC']);
+        valList1 = getfield(stimResults,[fieldName '1PC']);
+    else
+        valList0 = getfield(stimResults,[fieldName '0Hz']);
+        valList1 = getfield(stimResults,[fieldName '1Hz']);
+    end
+    
+    numList = length(indexListUnique);
+    valList0Unique = zeros(1,numList);
+    valList1Unique = zeros(1,numList);
+    for i=1:numList
+        valList0Unique(i) = unique(valList0(indexListUnique(i)==indexList));
+        valList1Unique(i) = unique(valList1(indexListUnique(i)==indexList));
+    end
+else
+    valList0Unique = indexListUnique;
+    valList1Unique = indexListUnique;
+end
 end

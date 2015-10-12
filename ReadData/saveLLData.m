@@ -98,11 +98,12 @@ stimType0 = [];
 stimType1 = [];
 contrastIndex = [];
 temporalFreqIndex = [];
+contrast0PC = [];
+contrast1PC = [];
 orientation0Deg = [];
 orientation1Deg = [];
 temporalFreq0Hz = [];
 temporalFreq1Hz = [];
-contrastPC = [];
 
 countTI=1;
 countPI=1;
@@ -136,11 +137,12 @@ for i=1:numTrials
         stimType1 = [stimType1 [trials.stimDesc.data.type1]];
         contrastIndex = [contrastIndex [trials.stimDesc.data.contrastIndex]];
         temporalFreqIndex = [temporalFreqIndex [trials.stimDesc.data.temporalFreqIndex]];
+        contrast0PC = [contrast0PC [trials.stimDesc.data.contrast0PC]];
+        contrast1PC = [contrast1PC [trials.stimDesc.data.contrast1PC]];
         orientation0Deg = [orientation0Deg [trials.stimDesc.data.orientation0Deg]];
         orientation1Deg = [orientation1Deg [trials.stimDesc.data.orientation1Deg]];
         temporalFreq0Hz = [temporalFreq0Hz [trials.stimDesc.data.temporalFreq0Hz]];
         temporalFreq1Hz = [temporalFreq1Hz [trials.stimDesc.data.temporalFreq1Hz]];
-        contrastPC = [contrastPC [trials.stimDesc.data.contrastIndex]]; % Change this to contrastPC once a similar change is made in the plugin
     end
     
     if isfield(trials,'trial')
@@ -220,11 +222,12 @@ LL.stimType0 = stimType0;
 LL.stimType1 = stimType1;
 LL.contrastIndex = contrastIndex;
 LL.temporalFreqIndex = temporalFreqIndex;
+LL.contrast0PC = contrast0PC;
+LL.contrast1PC = contrast1PC;
 LL.orientation0Deg = orientation0Deg;
 LL.orientation1Deg = orientation1Deg;
 LL.temporalFreq0Hz = temporalFreq0Hz;
 LL.temporalFreq1Hz = temporalFreq1Hz;
-LL.contrastPC = contrastPC;
 end
 function LL = getStimResultsLLGRF(subjectName,expDate,protocolName,folderSourceString)
 

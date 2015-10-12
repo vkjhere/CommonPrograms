@@ -1315,7 +1315,7 @@ for i=1:length(analogChannelsStored)
 end
 if ~isempty(analogInputNums)
     for i=1:length(analogInputNums)
-        outArray{count} = ['ainp' num2str(analogInputNums(i))]; %#ok<AGROW>
+        outArray{count} = ['ainp' num2str(analogInputNums(i))];
         outString = cat(2,outString,[outArray{count} '|']);
         count=count+1;
     end
