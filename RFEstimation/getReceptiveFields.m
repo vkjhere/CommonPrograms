@@ -1,8 +1,9 @@
-function getReceptiveFields(subjectName,expDate,protocolName,folderSourceString,gridType,measure,removeAvgRef,poolingOptionsList,filterStr)
+function getReceptiveFields(subjectName,expDate,protocolName,folderSourceString,gridType,measure,removeAvgRef,poolingOptionsList,filterStr,channelNumbers)
 
 if ~exist('removeAvgRef','var');         removeAvgRef=0;                end
 if ~exist('poolingOptionsList','var');   poolingOptionsList=1:3;        end
 if ~exist('filterStr','var');            filterStr='';                  end
+if ~exist('channelNumbers','var');       channelNumbers=[];             end
 
 % foldername
 folderName = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName);
@@ -27,14 +28,16 @@ elseif strncmpi(measure,'Energy',6)
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if strcmpi(measure,'LFP') || strcmpi(measure,'CSD')
-   load(fullfile(folderSegment,'LFP','lfpInfo.mat'));
-    channelNumbers = analogChannelsStored;
-elseif strcmpi(measure,'Spikes')
-   load(fullfile(folderSegment,'Spikes','spikeInfo.mat'));
-    channelNumbers = neuralChannelsStored;
-elseif strcmpi(measure,'Energy')
-    channelNumbers = goodElectrodes;
+if isempty(channelNumbers)
+    if strcmpi(measure,'LFP') || strcmpi(measure,'CSD')
+        load(fullfile(folderSegment,'LFP','lfpInfo.mat'));
+        channelNumbers = analogChannelsStored;
+    elseif strcmpi(measure,'Spikes')
+        load(fullfile(folderSegment,'Spikes','spikeInfo.mat'));
+        channelNumbers = neuralChannelsStored;
+    elseif strcmpi(measure,'Energy')
+        channelNumbers = goodElectrodes;
+    end
 end
 % channelNumbers=electrodeList;
 
