@@ -349,7 +349,7 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
         end
 
         yRange = [str2double(get(hYMin,'String')) str2double(get(hYMax,'String'))];
-        rescaleData(plotHandles,channelsStored,[xRange yRange],gridType);
+        rescaleData(plotHandles,channelsStored,[xRange yRange],gridType,subjectName);
     end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function rescaleData_Callback(~,~)
@@ -440,7 +440,7 @@ else
             disp('Use plotSpikeData instead of plotLFPData...');
         else
             clear signal analogData
-            load([folderData 'elec' num2str(channelNum)]);
+            load(fullfile(folderData,['elec' num2str(channelNum)]));
             
             fftBL = abs(fft(analogData(goodPos,blPos),[],2)); 
             fftST = abs(fft(analogData(goodPos,stPos),[],2));
