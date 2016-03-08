@@ -106,7 +106,7 @@ electrodeCount = 0;
 ainpCount = 0;
 
 for i=1:cAnalog
-    if strcmp(analogLabels(i,1:4),'elec')
+    if strcmp(analogLabels(i,1:4),'elec') || strcmp(analogLabels(i,1:4),'chan')
         electrodeCount = electrodeCount+1;
         electrodeNums(electrodeCount) = str2num(analogLabels(i,5:end)); %#ok<*AGROW,*ST2NM>
         electrodeListIDs(electrodeCount,:) = analogList(i);

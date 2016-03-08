@@ -497,7 +497,7 @@ else
             disp('Use plotSpikeData instead of plotLFPData...');
         else
             clear signal analogData
-            load([folderData 'elec' num2str(channelNum)]);
+            load(fullfile(folderData,['elec' num2str(channelNum)]));
             if removeAvgRef
                 analogData = analogData-avgRef;
             end
