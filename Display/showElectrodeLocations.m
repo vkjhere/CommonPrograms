@@ -3,7 +3,7 @@ function plotHandle = showElectrodeLocations(gridPosition,highlightElectrodes,co
 if ~exist('subjectName','var');          subjectName=[];                end
 if ~exist('hideElectrodeNums','var');    hideElectrodeNums=0;           end
 if ~exist('gridType','var');             gridType = 'Microelectrode';   end
-if ~exist('gridLayout','var');           gridLayout=0;                  end
+if ~exist('gridLayout','var');           gridLayout=2;                  end
 
 [~,~,electrodeArray] = electrodePositionOnGrid(1,gridType,subjectName,gridLayout);
 [numRows,numCols] = size(electrodeArray);

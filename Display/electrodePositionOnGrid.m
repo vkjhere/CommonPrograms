@@ -1,7 +1,7 @@
 function [row,column,electrodeArray] = electrodePositionOnGrid(electrodeNum,gridType,subjectName,gridLayout)
 
 if ~exist('subjectName','var');         subjectName=[];                 end
-if ~exist('gridLayout','var');          gridLayout=0;                   end
+if ~exist('gridLayout','var');          gridLayout=2;                   end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% EEG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if strcmpi(gridType,'EEG')
@@ -76,7 +76,7 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% Microelectrode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%    
 if strcmpi(gridType,'Microelectrode')
-    if strcmp(subjectName,'abu') || strcmp(subjectName,'rafiki') || isempty(subjectName)
+    if strcmp(subjectName,'abu') || strcmp(subjectName,'rafiki')
         
         electrodeArray = ...
             [00 02 01 03 04 06 08 10 14 00;
@@ -90,12 +90,26 @@ if strcmpi(gridType,'Microelectrode')
             79 80 84 86 87 89 91 94 63 95;
             00 81 83 85 88 90 92 93 96 00];
         
-        if electrodeNum<1 || electrodeNum>96
-            disp('Electrode Number out of range');
-            row=1;column=1;
-        else
-            [row,column] = find(electrodeArray==electrodeNum);
-        end
+    elseif strcmp(subjectName,'alpa') || strcmp(subjectName,'kesari') || isempty(subjectName)
+        
+        electrodeArray = ...
+           [00 88 78 68 58 48 38 28 18 00;
+            96 87 77 67 57 47 37 27 17 08;
+            95 86 76 66 56 46 36 26 16 07;
+            94 85 75 65 55 45 35 25 15 06;
+            93 84 74 64 54 44 34 24 14 05;
+            92 83 73 63 53 43 33 23 13 04;
+            91 82 72 62 52 42 32 22 12 03;
+            90 81 71 61 51 41 31 21 11 02;
+            89 80 70 60 50 40 30 20 10 01;
+            00 79 69 59 49 39 29 19 09 00];
+    end
+    
+    if electrodeNum<1 || electrodeNum>96
+        disp('Electrode Number out of range');
+        row=1;column=1;
+    else
+        [row,column] = find(electrodeArray==electrodeNum);
     end
 end
 

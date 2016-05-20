@@ -543,7 +543,7 @@ else
         disp(channelNum)
 
         % get position
-        [row,column] = electrodePositionOnGrid(channelNum,gridType,subjectName,gridLayout);
+        [row,column] = electrodePositionOnGrid(channelNum,gridType,subjectName);
 
         clear neuralInfo spikeData
         load(fullfile(folderData,['elec' num2str(channelNum) '_SID' num2str(SourceUnitID(i))]));
