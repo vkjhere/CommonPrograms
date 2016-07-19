@@ -40,7 +40,7 @@ else
     panel_factor=1;
 end
 % Make Panels
-panelHeight = 0.25; panelStartHeight = 0.725;
+panelHeight = 0.3; panelStartHeight = 0.625;
 staticPanelWidth = 0.25*panel_factor; staticStartPos = 0.025;
 dynamicPanelWidth = 0.25; dynamicStartPos = 0.275;
 timingPanelWidth = 0.25; timingStartPos = 0.525;
@@ -352,8 +352,8 @@ if strcmpi(gridType,'EEG')
     alphaRange=[8 13];
     freqRange=[30 80];
     uicontrol('Parent',heegPanel,'Unit','Normalized', ...
-        'Position',[0 1-9*eegHeight (eegTextWidth+0.4)/2 eegHeight],...
-        'Style','pushbutton','String','Plot TF-topoplot ','FontSize',fontSizeSmall,'Callback',{@plotTFtopo_Callback});
+        'Position',[0 1-9*eegHeight (eegTextWidth+0.6)/2 eegHeight],...
+        'Style','pushbutton','String','Plot TF-topo ','FontSize',fontSizeSmall,'Callback',{@plotTFtopo_Callback});
     uicontrol('Parent',heegPanel,'Unit','Normalized', ...
         'Position',[eegTextWidth 1-9*eegHeight (eegTextWidth+0.2)/2 eegHeight],...
         'Style','pushbutton','String','Plot TF ','FontSize',fontSizeSmall,'Callback',{@plotTF_Callback});
@@ -389,11 +389,11 @@ if strcmpi(gridType,'ECoG')
 elseif strcmpi(gridType,'EEG')
     % Panel gets divided into two to house the topoplots
     % additional variables- defining the topoplot locations on the right side of the panel
-    plotHandles = getPlotHandles(9,11,[0.05 0.05 0.9*panel_factor 0.625]);
+    plotHandles = getPlotHandles(9,11,[0.05 0.05 0.95*panel_factor 0.570]);
     capStartPos=0.515;
     capStartHeight=0.05;
     capBoxWidth=0.45;
-    capBoxHeight=0.55;
+    capBoxHeight=0.50;
     capGap = 0.04;
     % topoplot locations -ERP plots
     electrodeCapPosERP=[capStartPos capStartHeight+capBoxHeight/2+capGap capBoxWidth/2 capBoxHeight/2];
@@ -409,7 +409,7 @@ else
     plotHandles = getPlotHandles;
 end
 
-hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
+hMessage = uicontrol('Unit','Normalized','Position',[0 0.925 1 0.07],...
     'Style','text','String','DisplayAllChannelsSRC','FontSize',fontSizeLarge);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % functions
@@ -539,7 +539,6 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
         e=get(hEOTCode,'val');
         a=get(hAttendLoc,'val');
         s=get(hStimType,'val');
-        refChanIndex = get(hRefChannel,'val'); % reference channel-single/bipolar/avg
         
         % ERP  Variables
         ERPMin = str2double(get(hERPPeriodMin,'string'));
@@ -621,11 +620,13 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
         for i=1:size(Data,1)
             dataTF=squeeze(Data(i,:,:));
             [~,dS1,t2,f2] = getSTFT(dataTF,movingWin,params,timeVals,BLMin,BLMax);
+            if i==1
+                dSPower=zeros(size(Data,1),length(t2),length(f2));
+            end
             dSPower(i,:,:) = dS1;
-        end
-        
+        end  
         % for any specified frequency band
-        meanTF=[];
+        meanTF=zeros(size(Data,1),1);
         for i=1:size(Data,1)
             tST =  (t2>=STMin) & (t2<=STMax);
             fPL=   (f2>=fBandMin) & (f2<=fBandMax);
@@ -635,7 +636,7 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
         end
         
         % for alpha band
-        meanAlphaTF=[];
+        meanAlphaTF=zeros(size(Data,1),1);
         for j=1:size(Data,1)
             tST1 =  (t2>=STMin) & (t2<=STMax);
             fPL1=   (f2>=alphaBandMin) & (f2<=alphaBandMax);
@@ -668,22 +669,20 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
         refChanIndex = get(hRefChannel,'val');
         epochMin = timeVals(1);
         epochMax = timeVals(end);
-        ERPMin = str2double(get(hStimMin,'string'));
-        ERPMax = str2double(get(hStimMax,'string'));
         tERP = (timeVals>=epochMin) & (timeVals<=epochMax);
         blPeriod = (timeVals<=0);
         if ~blPeriod
             blPeriod = tERP;
         end
         % get  electrodes list
-        allElecData = [];
-        ERPPoolElecs = str2num(get(hERPElecPool,'string'));
+        ERPPoolElecs = str2double(get(hERPElecPool,'string'));
         if isempty(ERPPoolElecs)
             disp('Electrodes to pool not specified...');
             ERPPoolElecs = get(hAnalogChannel,'val');
         else
             disp(['Computing pooled ERP for electrodes : ',num2str(ERPPoolElecs)]);
         end
+         allElecData=[];
         % Get Data
         try
             if refChanIndex==1
@@ -691,7 +690,7 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
                 Data=plotData;
                 for iP = 1:length(ERPPoolElecs)
                     elecData = squeeze(Data(iP,:,:));
-                    allElecData = [allElecData;elecData];
+                    allElecData = [elecData allElecData];
                 end
             else % data re referencing
                 %Data for all the electrodes : this is to ensure the re referencing if any
@@ -737,11 +736,9 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
         %get the baseline and stimulus epoch ranges
         BLMin = str2double(get(hBaselineMin,'string'));
         BLMax = str2double(get(hBaselineMax,'string'));
-        STMin = str2double(get(hStimPeriodMin,'string'));
-        STMax = str2double(get(hStimPeriodMax,'string'));
         
         %channel selection : single/pooled
-        ERPPoolElecs = str2num(get(hERPElecPool,'string'));
+        ERPPoolElecs = str2double(get(hERPElecPool,'string'));
         if isempty(ERPPoolElecs)
             disp('Electrodes to pool not specified...');
             ERPPoolElecs = get(hAnalogChannel,'val');
@@ -757,6 +754,7 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
             % checking the state of Data re-referencing option chosen
             [DataAll] = bipolarRef(refChanIndex,plotData,folderMontage);
             % pick out the data for the set of electrodes to be pooled
+            Data=zeros(length(ERPPoolElecs),size(DataAll,2),size(DataAll,3));
             for e=1:length(ERPPoolElecs)
                 Data(e,:,:)=DataAll(ERPPoolElecs(e),:,:);
             end
@@ -774,6 +772,9 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
         for i=1:size(Data,1)
             dataTF=squeeze(Data(i,:,:));
             [~,dS1,t2,f2] = getSTFT(dataTF,movingWin,params,timeVals,BLMin,BLMax);
+            if i==1
+                dSPower=zeros(size(Data,1),length(t2),length(f2));
+            end
             dSPower(i,:,:) = dS1;
         end
         disp(['Computing pooled Time Frequency for electrodes : ',num2str(ERPPoolElecs)]);
@@ -823,6 +824,7 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
         elseif refChanIndex == 2 % hemisphere referencing
             [chanlocs,hemBipolarLocs] = loadChanLocs(capType,refChanIndex,folderMontage);
             disp(' working on hemisphere referenced data..');
+            Data=zeros(size(plotData,1),size(plotData,2),size(plotData,3));
             for iH = 1:size(plotData,1)
                 Data(iH,:,:) = plotData(hemBipolarLocs(iH,1),:,:) - plotData(hemBipolarLocs(iH,2),:,:);
             end
@@ -831,6 +833,7 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
             chanlocs = loadChanLocs(capType,refChanIndex,folderMontage);
             disp(' working on average referenced data..');
             aveData = mean(plotData,1);
+            Data=zeros(size(plotData,1),size(plotData,2),size(plotData,3));
             for iH = 1:size(plotData,1)
                 Data(iH,:,:) = plotData(iH,:,:) - aveData;
             end
@@ -838,6 +841,7 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
             [chanlocs,~,bipolarLocs] = loadChanLocs(capType,refChanIndex,folderMontage);
             disp(' working on bipolar referenced data..');
             maxChanKnown = 96; % default set by MD while creating bipolar montage; this might be different for different montages!!
+            Data=zeros(size(bipolarLocs,1),size(plotData,2),size(plotData,3));
             for iH = 1:size(bipolarLocs,1)
                 chan1 = bipolarLocs(iH,1);
                 chan2 = bipolarLocs(iH,2);
@@ -857,6 +861,7 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
             refChanIndex = refChanIndex-4;
             chanlocs = loadChanLocs(capType,refChanIndex,folderMontage);
             disp(['Rereferencing data wrto electrode :' num2str(refChanIndex)]);
+            Data=zeros(size(plotData,1),size(plotData,2),size(plotData,3));
             for iR = 1:size(plotData,1)
                 Data(iR,:,:) = plotData(iR,:,:) - plotData(refChanIndex,:,:);
             end
@@ -867,6 +872,7 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
     function outString = getBipAnalogChannelList(chanloc)
         chanSize = size(chanloc,2);
         outString='';
+        outArray=cell(chanSize,1);
         for iC = 1:chanSize
             outArray{iC} = ['elec' num2str(iC)];
             outString = cat(2,outString,[outArray{iC} '|']);
@@ -876,7 +882,9 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
 % This function is used to get the  time averaged ERP data for all the channels
     function erp = getERPData(Data,tERP,blPeriod)
         erp = zeros(size(Data,1),1);
+        timeERP=length(find(tERP==1));
         for iE = 1:size(Data,1)
+            dataERP=zeros(size(Data,2),timeERP);
             for goodPos=1:size(Data,2) % for every trial compute the baseline factor
                 dataBL = mean(mean(squeeze(Data(iE,goodPos,blPeriod)),1),2);
                 dataERP(goodPos,:)=squeeze(Data(iE,goodPos,tERP))-dataBL;
@@ -1306,6 +1314,8 @@ function [Data]=getDataSRC(c,t,e,a,s,folderName,folderLFP,analogChannels)
 % Load Trial Numbers for  given Parameter Combinations
 folderExtract = fullfile(folderName,'extractedData');
 folderSegment = fullfile(folderName,'segmentedData');
+load(fullfile(folderSegment,'badTrials.mat'));
+[~,timeVals] = loadlfpInfo(folderLFP);
 [parameterCombinations] = loadParameterCombinations(folderExtract);
 trialNums = cell2mat(parameterCombinations(c,t,e,a,s));
 try
@@ -1316,6 +1326,7 @@ catch
 end
 goodPos=setdiff(trialNums,badTrials);
 % Extraction- for the specified channels
+Data=zeros(size(analogChannels,2),length(goodPos),length(timeVals));
 for iC = 1:size(analogChannels,2)
     analogData = load(fullfile(folderLFP,['elec' num2str(analogChannels(iC)) '.mat']));
     Data(iC,:,:)=analogData.analogData(goodPos,:);
