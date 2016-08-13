@@ -14,7 +14,6 @@ folderExtract = fullfile(folderName,'extractedData');
 folderSegment = fullfile(folderName,'segmentedData');
 folderLFP = fullfile(folderSegment,'LFP');
 folderSpikes = fullfile(folderSegment,'Spikes');
-folderMontage='C:\'; % Have to fix a location to store the montages folder that contains the channel location files for topoplots.
 
 % load LFP Information
 [analogChannelsStored,timeVals] = loadlfpInfo(folderLFP);
@@ -148,7 +147,15 @@ hAnalysisType = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'BackgroundColor', backgroundColor, 'Position', ...
     [dynamicTextWidth 1-6*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
     'Style','popup','String',analysisTypeString,'FontSize',fontSizeSmall);
-
+% Baseline correction : to remove drifts in the data
+BaselineTypeString = 'No|Yes';
+uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
+    'Position',[0 1-7*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
+    'Style','text','String','blCorrection','FontSize',fontSizeSmall);
+hbaselineCorrection = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
+    'BackgroundColor', backgroundColor, 'Position', ...
+    [dynamicTextWidth 1-7*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
+    'Style','popup','String',BaselineTypeString,'FontSize',fontSizeSmall);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% Timing panel %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -330,7 +337,7 @@ if strcmpi(gridType,'EEG')
     % Plot and clear all buttons
     uicontrol('Parent',heegPanel,'Unit','Normalized', ...
         'Position',[0 1-4*(eegHeight+eegGap) eegTextWidth+0.4 eegHeight],...
-        'Style','pushbutton','String','Plot ERP-topoplot','FontSize',fontSizeSmall,'Callback',{@plot_Callback});
+        'Style','pushbutton','String','Plot ReRef-ERP-topo','FontSize',fontSizeSmall,'Callback',{@plotERP_ReRef_Callback});
     
     uicontrol('Parent',heegPanel,'Unit','Normalized', ...
         'Position',[0 1-5*(eegHeight+eegGap) eegTextWidth+0.4 eegHeight],...
@@ -390,7 +397,7 @@ elseif strcmpi(gridType,'EEG')
     % Panel gets divided into two to house the topoplots
     % additional variables- defining the topoplot locations on the right side of the panel
     plotHandles = getPlotHandles(9,11,[0.05 0.05 0.95*panel_factor 0.570]);
-    capStartPos=0.515;
+    capStartPos=0.535;
     capStartHeight=0.05;
     capBoxWidth=0.45;
     capBoxHeight=0.50;
@@ -405,6 +412,17 @@ elseif strcmpi(gridType,'EEG')
     capTFalphaHandle=subplot('Position',electrodeCapPosTFalpha); axis off;
     electrodeCapPosTF=[capStartPos+(capBoxWidth/2)+capGap capStartHeight capBoxWidth/2 capBoxHeight/2];
     capTFHandle=subplot('Position',electrodeCapPosTF); axis off;
+    % get the bad trials file if present
+    badTrials=loadbadTrials(folderSegment);
+    %setting multi taper parameters for time frequency plots
+    % Set MT parameters
+    fMax=100;
+    params.tapers   = [1 1];
+    params.pad      = -1;
+    params.Fs       = 1/abs(timeVals(1)-timeVals(2));
+    params.fpass    = [0 fMax];
+    params.trialave = 1;
+    movingWin = [0.50 0.050];
 else
     plotHandles = getPlotHandles;
 end
@@ -420,6 +438,7 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.925 1 0.07],...
         a=get(hAttendLoc,'val');
         s=get(hStimType,'val');
         analysisType = get(hAnalysisType,'val');
+        blCorrection=get(hbaselineCorrection,'val');
         plotColor = colorNames(get(hChooseColor,'val'));
         
         blRange = [str2double(get(hBaselineMin,'String')) str2double(get(hBaselineMax,'String'))];
@@ -446,8 +465,19 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.925 1 0.07],...
                 showElectrodeLocations(electrodeGridPos,inhibitedElectrodes,'g',hElectrodes,1,0,gridType,subjectName);
             else
                 channelsStored = analogChannelsStored;
-                plotLFPData(plotHandles,channelsStored,goodPos,folderLFP,...
-                    analysisType,timeVals,plotColor,blRange,stRange,gridType,subjectName);
+                if strcmp(gridType,'EEG')
+                    % if it's an EEG dataset-get the time range over which RMS erp has
+                    % to be computed and plotted as topolot
+                    ERPRange = [str2double(get(hERPPeriodMin,'String')) str2double(get(hERPPeriodMax,'String'))];
+                    % Remove the bad trials based on the bad trials file if present
+                    goodPos=setdiff(goodPos,badTrials);
+                    % additional arguments like ERP range and cap location sent
+                    plotLFPData(plotHandles,channelsStored,goodPos,folderLFP,...
+                        analysisType,timeVals,blCorrection,plotColor,blRange,stRange,gridType,subjectName,ERPRange,capERPHandle,capType);
+                else
+                    plotLFPData(plotHandles,channelsStored,goodPos,folderLFP,...
+                        analysisType,timeVals,blCorrection,plotColor,blRange,stRange,gridType,subjectName);
+                end
             end
             
             if analysisType<=2 % ERP or spikes
@@ -528,58 +558,45 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.925 1 0.07],...
                 cla(plotHandles(i,j));
             end
         end
-        
+        if strcmp(gridType,'EEG') %clear the ERP topoplot
+            subplot(capERPHandle);cla(gca,'reset');axis off;
+        end
     end
 %__________________________EEG Specific functions__________________________
-%this function plots the ERP topoplots for single and chosen reference scheme
-    function plot_Callback(~,~)
-        % Intitialise
-        c=get(hContrast,'val');
-        t=get(hTemporalFreq,'val');
-        e=get(hEOTCode,'val');
-        a=get(hAttendLoc,'val');
-        s=get(hStimType,'val');
-        
-        % ERP  Variables
-        ERPMin = str2double(get(hERPPeriodMin,'string'));
-        ERPMax = str2double(get(hERPPeriodMax,'string'));
-        tERP = (timeVals>=ERPMin) & (timeVals<=ERPMax);
-        blPeriod = (timeVals<=0);
-        if ~blPeriod
-            blPeriod = tERP;
-        end
-        % Get Data
-        [plotData] = getDataSRC(c,t,e,a,s,folderName,folderLFP,analogChannelsStored);
-        
-        % plot data
-        refChanIndex=1; % by default one topoplot is single wire referenced
-        [~,chanlocs] = bipolarRef(refChanIndex,plotData,folderMontage);
-        erpTopo = getERPData(plotData,tERP,blPeriod);
-        subplot(capERPHandle); topoplot(erpTopo,chanlocs,'electrodes','numbers','style','both','drawaxis','off');
-        colorbar; title(['RMS ERP: ' num2str(ERPMin) ' to ' num2str(ERPMax) ' s' ' (SingleWire)']);
-        clear Data;
-        
-        %Plotting topoplot based on the reference scheme-right side plot
+%this function plots the ERP topoplots for any reference scheme-if chosen
+    function plotERP_ReRef_Callback(~,~)
         refChanIndex = get(hRefChannel,'val');
-        if refChanIndex~=1 % plot the rereferenced topoplot only for bipolar/average/hemisphere/other chan reference
-            [Data,chanlocs] = bipolarRef(refChanIndex,plotData,folderMontage);
+        % only if the reference scheme is anything other than single reference
+        if refChanIndex ~= 1
+            % Intitialise
+            c=get(hContrast,'val');
+            t=get(hTemporalFreq,'val');
+            e=get(hEOTCode,'val');
+            a=get(hAttendLoc,'val');
+            s=get(hStimType,'val');
+            analysisType=1;
+            ERPRange = [str2double(get(hERPPeriodMin,'String')) str2double(get(hERPPeriodMax,'String'))];
+            blRange =  [str2double(get(hBaselineMin,'String')) str2double(get(hBaselineMax,'String'))];
+            blCorrection=get(hbaselineCorrection,'val');
+            goodPos = setdiff(parameterCombinations{c,t,e,a,s},badTrials);
             
-            if refChanIndex ~= 4 % anything apart from bipolar
-                erpTopoRef = getERPData(Data,tERP,blPeriod);
-                subplot(capERPRefHandle); topoplot(erpTopoRef,chanlocs,'electrodes','numbers','style','both','drawaxis','off');
-                colorbar; title(['Rereferenced']);
-            else % bipolar reference
-                erpTopoRef = (rms(squeeze(mean((Data(:,:,tERP)-repmat(mean(Data(:,:,blPeriod),3),1,1,size(Data(:,:,tERP),3))),2))'))'...
-                    -(rms(squeeze(mean((Data(:,:,blPeriod)-repmat(mean(Data(:,:,blPeriod),3),1,1,size(Data(:,:,blPeriod),3))),2))'))';
-                subplot(capERPRefHandle); topoplot(erpTopoRef,chanlocs,'electrodes','numbers','style','both','drawaxis','off','nosedir','-Y');
-                colorbar; title('Re-referenced');
-            end
+            % Get Data based on ref scheme
+            Data = getElecDataSRC(goodPos,timeVals,analogChannelsStored,folderLFP);
+            [ReRef_Data,chanlocs] = bipolarRef(refChanIndex,Data);
+            
+            %get the values for topoplot
+            [erpTopoRef,~] = getERPDataRef(analysisType,ReRef_Data,timeVals,blRange,blCorrection,ERPRange);
+            subplot(capERPRefHandle);cla(gca,'reset'); axis off;
+            topoplot(erpTopoRef,chanlocs,'electrodes','numbers','style','both','drawaxis','off');
+            colorbar; colormap('jet');
+            refType=getRefschemeName(refChanIndex);
+            title(refType);
         else
-            disp('Rereferencing was not chosen');
+            disp('Rereferencing was not chosen;Use Plot button in plottingOptions panel to see the single reference ERP');
         end
     end
 
-% function for Plotting TF topoplot- alpha and specified freq plots____
+% function for Plotting TF topoplot- alpha and specified freq band
     function plotTFtopo_Callback(~,~)
         % Intitialise
         a=get(hAttendLoc,'val');
@@ -588,75 +605,33 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.925 1 0.07],...
         c=get(hContrast,'val');
         t=get(hTemporalFreq,'val');
         refChanIndex = get(hRefChannel,'val');
+        goodPos = setdiff(parameterCombinations{c,t,e,a,s},badTrials);
+        analysisType=1;
         
         %get the baseline and stimulus epoch ranges
-        BLMin = str2double(get(hBaselineMin,'string'));
-        BLMax = str2double(get(hBaselineMax,'string'));
-        STMin = str2double(get(hStimPeriodMin,'string'));
-        STMax = str2double(get(hStimPeriodMax,'string'));
+        blRange =[str2double(get(hBaselineMin,'string')) str2double(get(hBaselineMax,'string'))];
+        stRange=[str2double(get(hStimPeriodMin,'string')) str2double(get(hStimPeriodMax,'string'))];
         
         %get the ranges for the frequency bands
-        alphaBandMin=str2double(get(halphaRangeMin,'string'));
-        alphaBandMax=str2double(get(halphaRangeMax,'string'));
-        fBandMin = str2double(get(hfreqRangeMin,'string'));
-        fBandMax = str2double(get(hfreqRangeMax,'string'));
+        alphaRange=[str2double(get(halphaRangeMin,'string')) str2double(get(halphaRangeMax,'string'))];
+        freqRange =[str2double(get(hfreqRangeMin,'string'))  str2double(get(hfreqRangeMax,'string'))];
         
         % Get Data
-        [plotData] = getDataSRC(c,t,e,a,s,folderName,folderLFP,analogChannelsStored);
+        DataAllElec = getElecDataSRC(goodPos,timeVals,analogChannelsStored,folderLFP);
         
-        % checking the state of Data re-referencing option chosen
-        [Data,chanlocs] = bipolarRef(refChanIndex,plotData,folderMontage);
+        % status of the reference scheme
+        [Data,chanlocs] = bipolarRef(refChanIndex,DataAllElec);
         
-        % Set MT parameters
-        fMax=100;
-        params.tapers   = [1 1];
-        params.pad      = -1;
-        params.Fs       = 1/abs(timeVals(1)-timeVals(2));
-        params.fpass    = [0 fMax];
-        params.trialave = 1;
-        movingWin = [0.25 0.025];
-        
-        %get the spectral estimate for each electrode
-        for i=1:size(Data,1)
-            dataTF=squeeze(Data(i,:,:));
-            [~,dS1,t2,f2] = getSTFT(dataTF,movingWin,params,timeVals,BLMin,BLMax);
-            if i==1
-                dSPower=zeros(size(Data,1),length(t2),length(f2));
-            end
-            dSPower(i,:,:) = dS1;
-        end  
-        % for any specified frequency band
-        meanTF=zeros(size(Data,1),1);
-        for i=1:size(Data,1)
-            tST =  (t2>=STMin) & (t2<=STMax);
-            fPL=   (f2>=fBandMin) & (f2<=fBandMax);
-            dS1 = squeeze(dSPower(i,:,:));
-            S1ST = dS1(tST,fPL);
-            meanTF(i)=mean(mean(S1ST,2));
-        end
-        
-        % for alpha band
-        meanAlphaTF=zeros(size(Data,1),1);
-        for j=1:size(Data,1)
-            tST1 =  (t2>=STMin) & (t2<=STMax);
-            fPL1=   (f2>=alphaBandMin) & (f2<=alphaBandMax);
-            dS11 = squeeze(dSPower(j,:,:));
-            S2ST = dS11(tST1,fPL1);
-            meanAlphaTF(j)=mean(mean(S2ST,2));
-        end
+        % get the values for the topoplot
+        [~,~,~,meanTF,meanAlphaTF]=getTFData(analysisType,Data,movingWin,params,timeVals,blRange,stRange,alphaRange,freqRange);
         
         %Plotting the topoplots
-        if refChanIndex ~=4
-            subplot(capTFalphaHandle);cla(gca,'reset');axis off;
-            subplot(capTFHandle);cla(gca,'reset');axis off;
-            subplot(capTFalphaHandle); topoplot(meanAlphaTF,chanlocs,'electrodes','numbers','style','both','drawaxis','off'); colorbar; title('Change in alpha power');
-            subplot(capTFHandle); topoplot(meanTF,chanlocs,'electrodes','numbers','style','both','drawaxis','off'); colorbar; title('Change in chosen band power');
-        else
-            subplot(capTFalphaHandle);cla(gca,'reset');axis off;
-            subplot(capTFHandle);cla(gca,'reset');axis off;
-            subplot(capTFalphaHandle); topoplot(meanAlphaTF,chanlocs,'electrodes','numbers','style','both','drawaxis','off','nosedir','-Y'); colorbar; title('Change in alpha power');
-            subplot(capTFHandle); topoplot(meanTF,chanlocs,'electrodes','numbers','style','both','drawaxis','off','nosedir','-Y'); colorbar; title('Change in  chosen band power');
-        end
+        subplot(capTFalphaHandle);cla(gca,'reset');axis off;
+        subplot(capTFHandle);cla(gca,'reset');axis off;
+        subplot(capTFalphaHandle); topoplot(meanAlphaTF,chanlocs,'electrodes','numbers','style','both','drawaxis','off','nosedir','-Y'); colorbar; title('Change in alpha power');
+        subplot(capTFHandle); topoplot(meanTF,chanlocs,'electrodes','numbers','style','both','drawaxis','off','nosedir','-Y'); colorbar; title('Change in  chosen band power');
+        [refType]=getRefschemeName(refChanIndex);
+        text(1.4,1.1,refType,'parent',capTFalphaHandle,'unit','normalized');
     end
 
 % function for plotting ERP waveforms from pooled electrodes
@@ -667,55 +642,57 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.925 1 0.07],...
         c=get(hContrast,'val');
         t=get(hTemporalFreq,'val');
         refChanIndex = get(hRefChannel,'val');
-        epochMin = timeVals(1);
-        epochMax = timeVals(end);
-        tERP = (timeVals>=epochMin) & (timeVals<=epochMax);
-        blPeriod = (timeVals<=0);
-        if ~blPeriod
-            blPeriod = tERP;
-        end
-        % get  electrodes list
+        analysisType=2; % 1-Topoplot; 2-pooled/single channel ERP Plot
+        
+        % get  electrodes list and ERP time ranges
+        blRange =  [str2double(get(hBaselineMin,'String')) str2double(get(hBaselineMax,'String'))];
+        blCorrection=get(hbaselineCorrection,'val');
+        goodPos = setdiff(parameterCombinations{c,t,e,a,s},badTrials);
         ERPPoolElecs = str2double(get(hERPElecPool,'string'));
+        
         if isempty(ERPPoolElecs)
             disp('Electrodes to pool not specified...');
             ERPPoolElecs = get(hAnalogChannel,'val');
         else
             disp(['Computing pooled ERP for electrodes : ',num2str(ERPPoolElecs)]);
         end
-         allElecData=[];
         % Get Data
         try
             if refChanIndex==1
-                [plotData] = getDataSRC(c,t,e,a,s,folderName,folderLFP,ERPPoolElecs);
+                [plotData] = getElecDataSRC(goodPos,timeVals,ERPPoolElecs,folderLFP);
                 Data=plotData;
-                for iP = 1:length(ERPPoolElecs)
-                    elecData = squeeze(Data(iP,:,:));
-                    allElecData = [elecData allElecData];
-                end
             else % data re referencing
-                %Data for all the electrodes : this is to ensure the re referencing if any
-                [plotData] = getDataSRC(c,t,e,a,s,folderName,folderLFP,analogChannelsStored);
-                
-                % checking the state of Data re-referencing option chosen
-                [Data]=bipolarRef(refChanIndex,plotData,folderMontage);
-                
-                % pick out the data for the set of electrodes to be pooled
-                for iP = 1:length(ERPPoolElecs)
-                    elecData = squeeze(Data(ERPPoolElecs(iP),:,:));
-                    allElecData = [allElecData;elecData];
-                end
+                [plotData] =getElecDataSRC(goodPos,timeVals,analogChannelsStored,folderLFP);
+                % data obtained from all the electrodes- becasue average/hemisphere referencing requires data from
+                % electrodes other than the ones chosen
+                [Data]=bipolarRef(refChanIndex,plotData);
             end
-            clear erp erpData erpDataBLCor;
-            erpData = allElecData(:,tERP);
-            erpDataBLCor = (erpData - repmat(mean(erpData(:,blPeriod),2),1,size(erpData,2))); % Correct for DC Shift (baseline correction)
-            erp = mean(erpDataBLCor,1);
+            
+            % pick out the data for the set of electrodes to be pooled
+            allElecData=zeros(length(goodPos)*length(ERPPoolElecs),length(timeVals));
+            for iP = 1:length(ERPPoolElecs)
+                if refChanIndex==1
+                    elecData = squeeze(Data(iP,:,:));
+                else
+                    elecData = squeeze(Data(ERPPoolElecs(iP),:,:));
+                end
+                if iP==1
+                    allElecData(iP:length(goodPos),:) =elecData;
+                else
+                    startPos=(length(goodPos)*(iP-1))+1; endPos=length(goodPos)*iP;
+                    allElecData(startPos:endPos,:) =elecData;
+                end
+                clear elecData;
+            end
+            
+            % get the mean ERP trace for the electrodes pooled/single
+            [~,meanERP] = getERPDataRef(analysisType,allElecData,timeVals,blRange,blCorrection);
             
             % pooled ERP for the specified electrodes-plots in a new figure
             figure('name','Pooled ERP plot');
-            plot(timeVals(tERP),erp);
-            xlim([epochMin epochMax]);
+            plot(timeVals,meanERP);
             [refType]=getRefschemeName(refChanIndex);
-            text(0.1,0.9,['ERP; n = ' num2str(size(erpData,1))],'unit','normalized','fontsize',9);
+            text(0.1,0.9,['ERP; n = ' num2str(size(allElecData,1))],'unit','normalized','fontsize',9);
             text(0.3,0.9,['Electrodes pooled: ' num2str(ERPPoolElecs)],'unit','normalized','fontsize',9);
             text(0.6,0.9,['Reference Scheme: ',refType],'unit','normalized','fontsize',9);
         catch
@@ -732,97 +709,86 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.925 1 0.07],...
         c=get(hContrast,'val');
         t=get(hTemporalFreq,'val');
         refChanIndex = get(hRefChannel,'val');
-        
-        %get the baseline and stimulus epoch ranges
-        BLMin = str2double(get(hBaselineMin,'string'));
-        BLMax = str2double(get(hBaselineMax,'string'));
+        analysisType=2;
+        % get  electrodes list and ERP time ranges
+        blRange =  [str2double(get(hBaselineMin,'String')) str2double(get(hBaselineMax,'String'))];
+        goodPos = setdiff(parameterCombinations{c,t,e,a,s},badTrials);
+        ERPPoolElecs = str2double(get(hERPElecPool,'string'));
         
         %channel selection : single/pooled
-        ERPPoolElecs = str2double(get(hERPElecPool,'string'));
         if isempty(ERPPoolElecs)
             disp('Electrodes to pool not specified...');
             ERPPoolElecs = get(hAnalogChannel,'val');
         else
-            disp(['Computing pooled Time Frequency for electrodes : ',num2str(ERPPoolElecs)]);
+            disp(['Computing pooled TF for electrodes : ',num2str(ERPPoolElecs)]);
         end
-        if refChanIndex==1
-            [plotData] = getDataSRC(c,t,e,a,s,folderName,folderLFP,ERPPoolElecs);
-            Data=plotData;
-        else
-            % Get Data for all the electrodes : this is to ensure the re
-            [plotData] = getDataSRC(c,t,e,a,s,folderName,folderLFP,analogChannelsStored);
-            % checking the state of Data re-referencing option chosen
-            [DataAll] = bipolarRef(refChanIndex,plotData,folderMontage);
-            % pick out the data for the set of electrodes to be pooled
-            Data=zeros(length(ERPPoolElecs),size(DataAll,2),size(DataAll,3));
-            for e=1:length(ERPPoolElecs)
-                Data(e,:,:)=DataAll(ERPPoolElecs(e),:,:);
+        try
+            if refChanIndex==1
+                [plotData] = getElecDataSRC(goodPos,timeVals,ERPPoolElecs,folderLFP);
+                Data=plotData;
+            else
+                % Get Data for all the electrodes : this is to ensure the re
+                [plotData] = getElecDataSRC(goodPos,timeVals,analogChannelsStored,folderLFP);
+                [Data]=bipolarRef(refChanIndex,plotData);
             end
-        end
-        % Set MT parameters
-        fMax=100;
-        params.tapers   = [1 1];
-        params.pad      = -1;
-        params.Fs       = 1/abs(timeVals(1)-timeVals(2));
-        params.fpass    = [0 fMax];
-        params.trialave = 1;
-        movingWin = [0.25 0.025];
-        cLims=[-5 5];
-        %get the spectral estimate for each electrode
-        for i=1:size(Data,1)
-            dataTF=squeeze(Data(i,:,:));
-            [~,dS1,t2,f2] = getSTFT(dataTF,movingWin,params,timeVals,BLMin,BLMax);
-            if i==1
-                dSPower=zeros(size(Data,1),length(t2),length(f2));
+            allElecData=zeros(length(ERPPoolElecs),length(goodPos),length(timeVals));
+            for iP = 1:length(ERPPoolElecs)
+                if refChanIndex==1
+                    elecData = Data(iP,:,:);
+                else
+                    elecData = Data(ERPPoolElecs(iP),:,:);
+                end
+                allElecData(iP,:,:) = elecData;
+                clear elecData;
             end
-            dSPower(i,:,:) = dS1;
+            
+            %get the spectral estimate
+            [dsPower,time,freq]=getTFData(analysisType,allElecData,movingWin,params,timeVals,blRange);
+            
+            %plotting the TF freq plot for that electrode/pooled electrode
+            figure('name',['TF plot for electrode :',num2str(ERPPoolElecs)]);
+            pcolor(time,freq,10*dsPower');
+            colormap('jet')
+            shading('interp');
+            [refType]=getRefschemeName(refChanIndex);
+            title(refType);
+        catch
+            disp('Please enter electrodes according to the reference option chosed; This electrode no does not exist for this ref scheme');
+            
         end
-        disp(['Computing pooled Time Frequency for electrodes : ',num2str(ERPPoolElecs)]);
-        tfData=squeeze(mean(dSPower,1)); % averaging the log spectrum across different electrodes
-        
-        %plotting the TF freq plot for that electrode/pooled electrode
-        figure('name',['TF plot for electrode :',num2str(ERPPoolElecs)]);
-        pcolor(t2,f2,tfData');
-        colormap('jet')
-        shading('interp');
-        caxis(cLims);
-        axis([-0.2 0.7 0 fMax]);
-        [refType]=getRefschemeName(refChanIndex);
-        title(refType);   
     end
-
 % data rereference function- gets the scheme for referencing and changing
 % the list of channels accordingly.
     function resetRef_Callback(~,~)
         refChanIndex = get(hRefChannel,'val');
         if refChanIndex == 4 % if the scheme is bipolar , form the bipolar sets
-            chanloc = loadChanLocs(capType,refChanIndex,folderMontage);
-            bipAnalogChannelList = getBipAnalogChannelList(chanloc);
-            set(hAnalogChannel,'String',bipAnalogChannelList);
+            chanloc = loadChanLocs(capType,refChanIndex);
+            no_of_elec=1:size(chanloc,2);
+            analogChannelStringList = getStringFromValues(no_of_elec,1);
         else
             analogChannelStringList = getStringFromValues(analogChannelsStored,1);
-            set(hAnalogChannel,'String',analogChannelStringList);
         end
+        set(hAnalogChannel,'String',analogChannelStringList);
+        
     end
 
 % function for clearing the EEG related plots
     function cla_eegplots_Callback(~,~)
-        subplot(capERPHandle); cla(gca,'reset'); axis off;
-        subplot(capERPRefHandle); cla(gca,'reset'); axis off;
+        subplot(capERPRefHandle); cla(gca,'reset'); axis off; % clears the re-ref topoplot
         subplot(capTFalphaHandle);cla(gca,'reset');axis off;
         subplot(capTFHandle);cla(gca,'reset');axis off;
-        hElectrodes = showElectrodeLocations(electrodeGridPos,[],[],[],1,0,gridType);
     end
+
 % this function returns the electrode wise data according to the reference
 % option chosen; right now common bad trials are used.
-    function [Data,chanlocs] = bipolarRef(refChanIndex,plotData,folderMontage)
+    function [Data,chanlocs] = bipolarRef(refChanIndex,plotData)
         
         if refChanIndex == 1 % Single wire referencing
             disp(' working on single wire reference data..');
-            Data = plotData;
-            chanlocs = loadChanLocs(capType,refChanIndex,folderMontage);%load the channel locations based on the captype
+            chanlocs = loadChanLocs(capType,refChanIndex);%load the channel locations based on the captype
+            Data=plotData;
         elseif refChanIndex == 2 % hemisphere referencing
-            [chanlocs,hemBipolarLocs] = loadChanLocs(capType,refChanIndex,folderMontage);
+            [chanlocs,hemBipolarLocs] = loadChanLocs(capType,refChanIndex);
             disp(' working on hemisphere referenced data..');
             Data=zeros(size(plotData,1),size(plotData,2),size(plotData,3));
             for iH = 1:size(plotData,1)
@@ -830,7 +796,7 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.925 1 0.07],...
             end
             
         elseif refChanIndex == 3 % average referencing
-            chanlocs = loadChanLocs(capType,refChanIndex,folderMontage);
+            chanlocs = loadChanLocs(capType,refChanIndex);
             disp(' working on average referenced data..');
             aveData = mean(plotData,1);
             Data=zeros(size(plotData,1),size(plotData,2),size(plotData,3));
@@ -838,7 +804,7 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.925 1 0.07],...
                 Data(iH,:,:) = plotData(iH,:,:) - aveData;
             end
         elseif refChanIndex == 4 % bipolar referencing
-            [chanlocs,~,bipolarLocs] = loadChanLocs(capType,refChanIndex,folderMontage);
+            [chanlocs,~,bipolarLocs] = loadChanLocs(capType,refChanIndex);
             disp(' working on bipolar referenced data..');
             maxChanKnown = 96; % default set by MD while creating bipolar montage; this might be different for different montages!!
             Data=zeros(size(bipolarLocs,1),size(plotData,2),size(plotData,3));
@@ -859,7 +825,7 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.925 1 0.07],...
             end
         else
             refChanIndex = refChanIndex-4;
-            chanlocs = loadChanLocs(capType,refChanIndex,folderMontage);
+            chanlocs = loadChanLocs(capType,refChanIndex);
             disp(['Rereferencing data wrto electrode :' num2str(refChanIndex)]);
             Data=zeros(size(plotData,1),size(plotData,2),size(plotData,3));
             for iR = 1:size(plotData,1)
@@ -867,38 +833,14 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.925 1 0.07],...
             end
         end
     end
-
-% this function gets the channel list for bipolar electrode reference scheme
-    function outString = getBipAnalogChannelList(chanloc)
-        chanSize = size(chanloc,2);
-        outString='';
-        outArray=cell(chanSize,1);
-        for iC = 1:chanSize
-            outArray{iC} = ['elec' num2str(iC)];
-            outString = cat(2,outString,[outArray{iC} '|']);
-        end
-    end
-
-% This function is used to get the  time averaged ERP data for all the channels
-    function erp = getERPData(Data,tERP,blPeriod)
-        erp = zeros(size(Data,1),1);
-        timeERP=length(find(tERP==1));
-        for iE = 1:size(Data,1)
-            dataERP=zeros(size(Data,2),timeERP);
-            for goodPos=1:size(Data,2) % for every trial compute the baseline factor
-                dataBL = mean(mean(squeeze(Data(iE,goodPos,blPeriod)),1),2);
-                dataERP(goodPos,:)=squeeze(Data(iE,goodPos,tERP))-dataBL;
-            end
-            erp(iE,1) = mean(mean(dataERP,2),1); % mean ERP value for each trial (averaged across time first) and mean across trials
-        end
-    end
 end
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main function that plots the data
 function plotLFPData(plotHandles, channelsStored, goodPos, ...
-    folderData, analysisType, timeVals, plotColor,blRange,stRange,gridType,subjectName)
+    folderData, analysisType, timeVals,blCorrection,plotColor,blRange,stRange,gridType,subjectName,ERPRange,capERPHandle,capType)
 
 if isempty(goodPos)
     disp('No entries for this combination..')
@@ -911,7 +853,9 @@ else
         xsBL = 0:1/(diff(blRange)):Fs-1/(diff(blRange));
         xsST = 0:1/(diff(stRange)):Fs-1/(diff(stRange));
     end
-    
+    if strcmp(gridType,'EEG') && analysisType==1 % only for ERP computation
+        erpTopo=zeros(length(channelsStored),1);
+    end
     for i=1:length(channelsStored)
         disp(i)
         channelNum = channelsStored(i);
@@ -923,6 +867,21 @@ else
             clear signal analogData
             load(fullfile(folderData ,['elec' num2str(channelNum)]));
             erp = mean(analogData(goodPos,:),1); %#ok<*NODEF>
+            
+            %check whether baseline correction has to be done or not
+            if blCorrection ==2 % baseline correction
+                Fs = round(1/(timeVals(2)-timeVals(1)));
+                blPos = find(timeVals>=blRange(1),1)+ (1:diff(blRange)*Fs);
+                erp=erp-mean(erp(:,blPos));
+            end
+            
+            % if it's an EEG dataset plot the topolots in addition to the single channel ERP's-
+            % get the RMS value for the ERP for each channel
+            if strcmp(gridType,'EEG')
+                Fs = round(1/(timeVals(2)-timeVals(1)));
+                erpPos = find(timeVals>=ERPRange(1),1)+ (1:diff(ERPRange)*Fs);
+                erpTopo(i)=rms(erp(:,erpPos));
+            end
             
             %Plot
             plot(plotHandles(row,column),timeVals,erp,'color',plotColor);
@@ -950,6 +909,16 @@ else
                 end
             end
         end
+    end
+    if strcmp(gridType,'EEG') && analysisType==1 % plot the topolot : default-single reference
+        if strcmp(capType,'actiCp64')
+            load('actiCap64.mat');
+        else
+            load('brainCap64.mat');
+        end
+        subplot(capERPHandle);cla(gca,'reset');axis off;colormap(jet);
+        topoplot(erpTopo,chanlocs,'electrodes','numbers','style','both','drawaxis','off');
+        colorbar; title(['RMS ERP: ' num2str(ERPRange(1)) ' to ' num2str(ERPRange(2)) ' s' ' (SingleWire)']);
     end
 end
 end
@@ -1285,7 +1254,13 @@ end
 function stimResults = loadStimResults(folderExtract)
 load (fullfile(folderExtract,'stimResults'));
 end
-
+function badTrials = loadbadTrials(folderSegment)
+try
+    load (fullfile(folderSegment,'badTrials.mat'));
+catch
+    badTrials=[];
+end
+end
 % added associate functions- for EEG analysis
 % same function as used in displaySingleChannelSRC- To get list of  electrodes
 function outString = getStringFromValues(valsUnique,decimationFactor)
@@ -1308,87 +1283,130 @@ end
     end
 end
 
-% to get data from all electrodes for the specified condition- for the topolots
-function [Data]=getDataSRC(c,t,e,a,s,folderName,folderLFP,analogChannels)
+% to get data from all/specified electrodes for the chosen condition- for the  re referenced topolots
+function DataAllElec=getElecDataSRC(goodPos,timeVals,analogChannelsStored,folderLFP)
 
-% Load Trial Numbers for  given Parameter Combinations
-folderExtract = fullfile(folderName,'extractedData');
-folderSegment = fullfile(folderName,'segmentedData');
-load(fullfile(folderSegment,'badTrials.mat'));
-[~,timeVals] = loadlfpInfo(folderLFP);
-[parameterCombinations] = loadParameterCombinations(folderExtract);
-trialNums = cell2mat(parameterCombinations(c,t,e,a,s));
-try
-    load(fullfile(folderSegment,'badTrials.mat'));
-catch
-    disp('No Bad Trials file found...');
-    badTrials=[];
-end
-goodPos=setdiff(trialNums,badTrials);
-% Extraction- for the specified channels
-Data=zeros(size(analogChannels,2),length(goodPos),length(timeVals));
-for iC = 1:size(analogChannels,2)
-    analogData = load(fullfile(folderLFP,['elec' num2str(analogChannels(iC)) '.mat']));
-    Data(iC,:,:)=analogData.analogData(goodPos,:);
+% Extraction- get the data on all the electrodes first
+DataAllElec=zeros(size(analogChannelsStored,2),length(goodPos),length(timeVals));
+for iC = 1:size(analogChannelsStored,2)
+    analogData = load(fullfile(folderLFP,['elec' num2str(analogChannelsStored(iC)) '.mat']));
+    DataAllElec(iC,:,:)=analogData.analogData(goodPos,:);
     clear analogData
 end
 end
+function [erpTopoRef,meanERP] = getERPDataRef(analysisType,Data,timeVals,blRange,blCorrection,ERPRange)
 
+erpTopoRef=zeros(size(Data,1),1);
+meanERP=zeros(1,length(timeVals));
+Fs = round(1/(timeVals(2)-timeVals(1)));
+
+if analysisType==1 % topoplot
+    for i=1:size(Data,1) %no of channels
+        erp = squeeze(mean(Data(i,:,:),2))'; % across the trials
+        %check whether baseline correction has to be done or not
+        if blCorrection ==2 % baseline correction
+            blPos = find(timeVals>=blRange(1),1)+ (1:diff(blRange)*Fs);
+            erp=erp-mean(erp(:,blPos));
+        end
+        %compute the rms of the ERP in the specified range
+        erpPos = find(timeVals>=ERPRange(1),1)+ (1:diff(ERPRange)*Fs);
+        erpTopoRef(i)=rms(erp(:,erpPos));
+    end
+else  % ERP trace for single/pooled electrode
+    erpData = mean(Data,1); % mean across trials
+    if blCorrection == 2 % apply baseline correction
+        Fs = round(1/(timeVals(2)-timeVals(1)));
+        blPos = find(timeVals>=blRange(1),1)+ (1:diff(blRange)*Fs);
+        meanERP = erpData-mean(erpData(:,blPos)); % mean baseline factor subtracted from the ERP signal
+    else
+        meanERP = erpData;
+    end
+end
+end
 % this function loads the channel location files to be passed to
 % topoplots;these locs files are stored in a folder called montages;
 % the montages folder is currently stored in the folderSourceString
-function [chanlocs,hemBipolarLocs,bipolarLocs] = loadChanLocs(capType,refType,folderMontage)
+function [chanlocs,hemBipolarLocs,bipolarLocs] = loadChanLocs(capType,refType)
 
 if nargin<2;    refType = 1; end
 
 if strcmp(capType,'actiCap64')
     if (refType == 4) %bipolar
-        load(fullfile(folderMontage,'Montages','bipolarChanlocsActiCap64.mat'));
+        load('bipolarChanlocsActiCap64.mat');
         chanlocs = eloc;
     else
-        load(fullfile(folderMontage,'Montages','actiCap64.mat'));
+        load('actiCap64.mat');
     end
-    load(fullfile(folderMontage,'Montages','hemBipChInfoActiCap_64.mat'));
-    load(fullfile(folderMontage,'Montages','bipChInfoActiCap64.mat'));
+    load('hemBipChInfoActiCap_64.mat');
+    load('bipChInfoActiCap64.mat');
     
 else % passive cap
     if (refType == 4)
         % have to generate the bipolar montage file for passive cap
-        load(fullfile(folderMontage,'Montages','bipolarChanlocsActiCap64.mat'));
+        disp('Channel location file for passive cap has not been generated. Using the actiCap configuration instead');
+        load('bipolarChanlocsActiCap64.mat');
         chanlocs = eloc;
     else
-        load(fullfile(folderMontage,'Montages','brainCap64.mat'));
+        load('brainCap64.mat');
     end
 end
 end
 
 % this function is used to compute the STFT for the time frequency
 % topoplots and single channel TF plots.
-function [SRaw,SChange,t,f] = getSTFT(analogData,movingWin,params,timeVals,BLMin,BLMax)
 
-[SRaw,t,f]=mtspecgramc(analogData',movingWin,params);
-t = t + timeVals(1); % shift the t values to the actual time
-tBL = intersect(find(t>=BLMin),find(t<=BLMax)); % baseline time indices
+function [dsPower,time,freq,meanTF,meanAlphaTF]=  getTFData(analysisType,Data,movingWin,params,timeVals,blRange,stRange,alphaRange,freqRange)
 
-SRawBL = SRaw(tBL,:,:);
+meanTF=zeros(size(Data,1),1);
+meanAlphaTF=zeros(size(Data,1),1);
+dsPower=[];
 
-mlogSRawBL = conv2Log(mean(mean(SRawBL,1),3));
-SChange = 10*(conv2Log(mean(SRaw,3)) - repmat(mlogSRawBL,size(SRaw,1),1));
-SRaw = 10*(conv2Log(mean(SRaw,3)));
-
+for i=1:size(Data,1) % for each electrode
+    dataTF=squeeze(Data(i,:,:));
+    [SRaw,time,freq]=mtspecgramc(dataTF',movingWin,params);
+    if i==1
+        time=time+timeVals(1);
+        if analysisType==1 % parameters for the topoplot
+            
+            freqPos= intersect((find(freq>=freqRange(1))),find((freq<=freqRange(2))));
+            alphaPos=intersect((find(freq>=alphaRange(1))),find((freq<=alphaRange(2))));
+            stPosTF=intersect(find(time>=stRange(1)),find(time<stRange(2)));
+        else
+            dsPower=zeros(size(Data,1),length(time),length(freq));
+        end
+        blPosTF =intersect(find(time>=blRange(1)),find(time<blRange(2)));
+    end
+    logBLPower=mean(mean(log10(SRaw(blPosTF,:)),1),2);
+    if analysisType==1 % TF Topoplot data
+        dsPower=mean(log10(SRaw(stPosTF,:)),1) - repmat(logBLPower,size(SRaw,2),1)';
+        % for any specified frequency band : averaging across the band of frequencies
+        meanTF(i) =mean(dsPower(freqPos),2);
+        % for alpha band
+        meanAlphaTF(i) = mean(dsPower(alphaPos),2);
+    else % TF plot for pooled/single electrode
+        dsPower(i,:,:)=log10(SRaw(:,:)) - repmat(logBLPower,[size(SRaw),1]);
+    end
+    
 end
-
+if analysisType==2 % mean log spectrum across the pooled electrode for pooled/Single TF analysis
+    if size(Data,1)==1
+        dsPower=squeeze(dsPower);
+    else
+        dsPower=squeeze(mean(dsPower,1));
+    end
+end
+end
 % to get titles for the figures- reference type used
 function [refType]=getRefschemeName(refChanIndex)
 switch(refChanIndex)
     case 1
         refType='Single wire';
     case 2
-         refType='Hemisphere';
+        refType='Hemisphere';
     case 3
         refType='Average';
     case 4
-       refType='Bipolar';
+        refType='Bipolar';
     otherwise
         refType=strcat('Referenced to Electrode- ',num2str(refChanIndex-4));
 end
