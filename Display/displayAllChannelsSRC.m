@@ -631,7 +631,7 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.925 1 0.07],...
         subplot(capTFalphaHandle); topoplot(meanAlphaTF,chanlocs,'electrodes','numbers','style','both','drawaxis','off','nosedir','-Y'); colorbar; title('Change in alpha power');
         subplot(capTFHandle); topoplot(meanTF,chanlocs,'electrodes','numbers','style','both','drawaxis','off','nosedir','-Y'); colorbar; title('Change in  chosen band power');
         [refType]=getRefschemeName(refChanIndex);
-        text(1.4,1.1,refType,'parent',capTFalphaHandle,'unit','normalized');
+        text(1.4,0.01,refType,'parent',capTFalphaHandle,'unit','normalized');
     end
 
 % function for plotting ERP waveforms from pooled electrodes
@@ -754,7 +754,6 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.925 1 0.07],...
             title(refType);
         catch
             disp('Please enter electrodes according to the reference option chosed; This electrode no does not exist for this ref scheme');
-            
         end
     end
 % data rereference function- gets the scheme for referencing and changing
@@ -769,7 +768,6 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.925 1 0.07],...
             analogChannelStringList = getStringFromValues(analogChannelsStored,1);
         end
         set(hAnalogChannel,'String',analogChannelStringList);
-        
     end
 
 % function for clearing the EEG related plots
@@ -1355,36 +1353,35 @@ end
 % this function is used to compute the STFT for the time frequency
 % topoplots and single channel TF plots.
 
-function [dsPower,time,freq,meanTF,meanAlphaTF]=  getTFData(analysisType,Data,movingWin,params,timeVals,blRange,stRange,alphaRange,freqRange)
+function [dsPower,timeValsTF,freq,meanTF,meanAlphaTF]=  getTFData(analysisType,Data,movingWin,params,timeVals,blRange,stRange,alphaRange,freqRange)
 
 meanTF=zeros(size(Data,1),1);
 meanAlphaTF=zeros(size(Data,1),1);
-dsPower=[];
+
+[~,time,freq]=mtspecgramc((squeeze(Data(1,:,:)))',movingWin,params);
+timeValsTF=time+timeVals(1);
+blPosTF =intersect(find(timeValsTF>=blRange(1)),find(timeValsTF<blRange(2)));
+if analysisType==2
+    dsPower=zeros(size(Data,1),length(time),length(freq));
+else
+    freqPos= intersect((find(freq>=freqRange(1))),find((freq<=freqRange(2))));
+    alphaPos=intersect((find(freq>=alphaRange(1))),find((freq<=alphaRange(2))));
+    stPosTF=intersect(find(timeValsTF>=stRange(1)),find(timeValsTF<stRange(2)));
+    dsPower=[];
+end
 
 for i=1:size(Data,1) % for each electrode
     dataTF=squeeze(Data(i,:,:));
-    [SRaw,time,freq]=mtspecgramc(dataTF',movingWin,params);
-    if i==1
-        time=time+timeVals(1);
-        if analysisType==1 % parameters for the topoplot
-            
-            freqPos= intersect((find(freq>=freqRange(1))),find((freq<=freqRange(2))));
-            alphaPos=intersect((find(freq>=alphaRange(1))),find((freq<=alphaRange(2))));
-            stPosTF=intersect(find(time>=stRange(1)),find(time<stRange(2)));
-        else
-            dsPower=zeros(size(Data,1),length(time),length(freq));
-        end
-        blPosTF =intersect(find(time>=blRange(1)),find(time<blRange(2)));
-    end
-    logBLPower=mean(mean(log10(SRaw(blPosTF,:)),1),2);
+    [SRaw,~,~]=mtspecgramc(dataTF',movingWin,params);
+    logBLPower=mean(log10(SRaw(blPosTF,:)),1);
     if analysisType==1 % TF Topoplot data
-        dsPower=mean(log10(SRaw(stPosTF,:)),1) - repmat(logBLPower,size(SRaw,2),1)';
+        dsPower=mean(log10(SRaw(stPosTF,:)),1) - logBLPower;
         % for any specified frequency band : averaging across the band of frequencies
         meanTF(i) =mean(dsPower(freqPos),2);
         % for alpha band
         meanAlphaTF(i) = mean(dsPower(alphaPos),2);
     else % TF plot for pooled/single electrode
-        dsPower(i,:,:)=log10(SRaw(:,:)) - repmat(logBLPower,[size(SRaw),1]);
+        dsPower(i,:,:)=log10(SRaw(:,:)) - repmat(logBLPower,size(SRaw,1),1);
     end
     
 end
