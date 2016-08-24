@@ -219,6 +219,8 @@ if getLFP && (cAnalog>0)
             end
             save(fullfile(outputFolder,['ainp' num2str(analogInputNums(i)) '.mat']),'analogData','analogInfo');
         end
+    else
+        analogInputNums=[];
     end
 
     % Write LFP information. For backward compatibility, we also save
