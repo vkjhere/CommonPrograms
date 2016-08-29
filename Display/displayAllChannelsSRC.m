@@ -151,7 +151,7 @@ hAnalysisType = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
 BaselineTypeString = 'No|Yes';
 uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-7*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
-    'Style','text','String','blCorrection','FontSize',fontSizeSmall);
+    'Style','text','String','baseline Correction','FontSize',fontSizeSmall);
 hbaselineCorrection = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'BackgroundColor', backgroundColor, 'Position', ...
     [dynamicTextWidth 1-7*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
@@ -412,11 +412,10 @@ elseif strcmpi(gridType,'EEG')
     capTFalphaHandle=subplot('Position',electrodeCapPosTFalpha); axis off;
     electrodeCapPosTF=[capStartPos+(capBoxWidth/2)+capGap capStartHeight capBoxWidth/2 capBoxHeight/2];
     capTFHandle=subplot('Position',electrodeCapPosTF); axis off;
-    % get the bad trials file if present
-    badTrials=loadbadTrials(folderSegment);
+    badTrials=loadbadTrials(folderSegment); % get the bad trials file if present
     %setting multi taper parameters for time frequency plots
     % Set MT parameters
-    fMax=100;
+    fMax=fftRange(2);
     params.tapers   = [1 1];
     params.pad      = -1;
     params.Fs       = 1/abs(timeVals(1)-timeVals(2));
@@ -445,6 +444,8 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.925 1 0.07],...
         stRange = [str2double(get(hStimPeriodMin,'String')) str2double(get(hStimPeriodMax,'String'))];
         
         goodPos = parameterCombinations{c,t,e,a,s};
+        goodPos=setdiff(goodPos,badTrials);
+        
         set(hMessage,'String',[num2str(length(goodPos)) ' stimuli found' ]);
         
         if ~isempty(goodPos)
@@ -468,12 +469,10 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.925 1 0.07],...
                 if strcmp(gridType,'EEG')
                     % if it's an EEG dataset-get the time range over which RMS erp has
                     % to be computed and plotted as topolot
-                    ERPRange = [str2double(get(hERPPeriodMin,'String')) str2double(get(hERPPeriodMax,'String'))];
-                    % Remove the bad trials based on the bad trials file if present
-                    goodPos=setdiff(goodPos,badTrials);
+                    erpRange = [str2double(get(hERPPeriodMin,'String')) str2double(get(hERPPeriodMax,'String'))];
                     % additional arguments like ERP range and cap location sent
                     plotLFPData(plotHandles,channelsStored,goodPos,folderLFP,...
-                        analysisType,timeVals,blCorrection,plotColor,blRange,stRange,gridType,subjectName,ERPRange,capERPHandle,capType);
+                        analysisType,timeVals,blCorrection,plotColor,blRange,stRange,gridType,subjectName,erpRange,capERPHandle,capType);
                 else
                     plotLFPData(plotHandles,channelsStored,goodPos,folderLFP,...
                         analysisType,timeVals,blCorrection,plotColor,blRange,stRange,gridType,subjectName);
@@ -587,7 +586,11 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.925 1 0.07],...
             %get the values for topoplot
             [erpTopoRef,~] = getERPDataRef(analysisType,ReRef_Data,timeVals,blRange,blCorrection,ERPRange);
             subplot(capERPRefHandle);cla(gca,'reset'); axis off;
-            topoplot(erpTopoRef,chanlocs,'electrodes','numbers','style','both','drawaxis','off');
+            if refChanIndex==4 % bipolar case
+                topoplot(erpTopoRef,chanlocs,'electrodes','numbers','style','both','drawaxis','off','nosedir','-Y','maplimits','maxmin');
+            else
+                topoplot(erpTopoRef,chanlocs,'electrodes','numbers','style','both','drawaxis','off','maplimits','maxmin');
+            end
             colorbar; colormap('jet');
             refType=getRefschemeName(refChanIndex);
             title(refType);
@@ -628,8 +631,20 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.925 1 0.07],...
         %Plotting the topoplots
         subplot(capTFalphaHandle);cla(gca,'reset');axis off;
         subplot(capTFHandle);cla(gca,'reset');axis off;
-        subplot(capTFalphaHandle); topoplot(meanAlphaTF,chanlocs,'electrodes','numbers','style','both','drawaxis','off','nosedir','-Y'); colorbar; title('Change in alpha power');
-        subplot(capTFHandle); topoplot(meanTF,chanlocs,'electrodes','numbers','style','both','drawaxis','off','nosedir','-Y'); colorbar; title('Change in  chosen band power');
+        subplot(capTFalphaHandle); 
+        if refChanIndex==4
+            topoplot(meanAlphaTF,chanlocs,'electrodes','numbers','style','both','drawaxis','off','nosedir','-Y','maplimits','maxmin');
+        else
+            topoplot(meanAlphaTF,chanlocs,'electrodes','numbers','style','both','drawaxis','off','maplimits','maxmin');
+        end
+        colorbar; title('Change in alpha power');
+        subplot(capTFHandle); 
+        if refChanIndex==4
+            topoplot(meanTF,chanlocs,'electrodes','numbers','style','both','drawaxis','off','nosedir','-Y','maplimits','maxmin');
+        else
+            topoplot(meanTF,chanlocs,'electrodes','numbers','style','both','drawaxis','off','maplimits','maxmin');    
+        end
+         colorbar; title('Change in  chosen band power');
         [refType]=getRefschemeName(refChanIndex);
         text(1.4,0.01,refType,'parent',capTFalphaHandle,'unit','normalized');
     end
@@ -833,27 +848,24 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.925 1 0.07],...
     end
 end
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main function that plots the data
-function plotLFPData(plotHandles, channelsStored, goodPos, ...
-    folderData, analysisType, timeVals,blCorrection,plotColor,blRange,stRange,gridType,subjectName,ERPRange,capERPHandle,capType)
+function plotLFPData(plotHandles,channelsStored,goodPos, ...
+    folderData,analysisType,timeVals,blCorrection,plotColor,blRange,stRange,gridType,subjectName,ERPRange,capERPHandle,capType)
 
 if isempty(goodPos)
     disp('No entries for this combination..')
 else
-    if analysisType>2 % FFT
-        Fs = round(1/(timeVals(2)-timeVals(1)));
-        blPos = find(timeVals>=blRange(1),1)+ (1:diff(blRange)*Fs);
-        stPos = find(timeVals>=stRange(1),1)+ (1:diff(stRange)*Fs);
-        
-        xsBL = 0:1/(diff(blRange)):Fs-1/(diff(blRange));
-        xsST = 0:1/(diff(stRange)):Fs-1/(diff(stRange));
-    end
+    
+    Fs = round(1/(timeVals(2)-timeVals(1)));
+    blPos = find(timeVals>=blRange(1),1)+ (1:diff(blRange)*Fs);
+    stPos = find(timeVals>=stRange(1),1)+ (1:diff(stRange)*Fs);
+    
     if strcmp(gridType,'EEG') && analysisType==1 % only for ERP computation
         erpTopo=zeros(length(channelsStored),1);
     end
+    
     for i=1:length(channelsStored)
         disp(i)
         channelNum = channelsStored(i);
@@ -861,22 +873,22 @@ else
         % get position
         [row,column] = electrodePositionOnGrid(channelNum,gridType,subjectName);
         
-        if analysisType == 1        % compute ERP
-            clear signal analogData
-            load(fullfile(folderData ,['elec' num2str(channelNum)]));
+        % get Data
+        clear data
+        data = load(fullfile(folderData ,['elec' num2str(channelNum)]));
+        analogData = data.analogData;
+        
+        %check whether baseline correction has to be done or not
+        if blCorrection == 2 % baseline correction
+            analogData = analogData - repmat(mean(analogData(:,blPos),2),1,size(analogData,2));
+        end
+        
+        if analysisType == 1        % compute ERP          
             erp = mean(analogData(goodPos,:),1); %#ok<*NODEF>
-            
-            %check whether baseline correction has to be done or not
-            if blCorrection ==2 % baseline correction
-                Fs = round(1/(timeVals(2)-timeVals(1)));
-                blPos = find(timeVals>=blRange(1),1)+ (1:diff(blRange)*Fs);
-                erp=erp-mean(erp(:,blPos));
-            end
-            
+
             % if it's an EEG dataset plot the topolots in addition to the single channel ERP's-
             % get the RMS value for the ERP for each channel
             if strcmp(gridType,'EEG')
-                Fs = round(1/(timeVals(2)-timeVals(1)));
                 erpPos = find(timeVals>=ERPRange(1),1)+ (1:diff(ERPRange)*Fs);
                 erpTopo(i)=rms(erp(:,erpPos));
             end
@@ -887,21 +899,25 @@ else
         elseif analysisType == 2    % compute Firing rates
             disp('Use plotSpikeData instead of plotLFPData...');
         else
-            clear signal analogData
-            load(fullfile(folderData,['elec' num2str(channelNum)]));
+            % For FFT
+            xsBL = 0:1/(diff(blRange)):Fs-1/(diff(blRange));
+            xsST = 0:1/(diff(stRange)):Fs-1/(diff(stRange));
+    
+            logMeanFFTBL = log10(mean(abs(fft(analogData(goodPos,blPos),[],2))));
+            logMeanFFTST = log10(mean(abs(fft(analogData(goodPos,stPos),[],2))));
             
-            fftBL = abs(fft(analogData(goodPos,blPos),[],2));
-            fftST = abs(fft(analogData(goodPos,stPos),[],2));
-            
+            if blCorrection == 2 % baseline correction
+                logMeanFFTBL(1)=logMeanFFTBL(2); % amplitude at 0 Hz is zero because of subtraction
+            end
             if analysisType == 3
-                plot(plotHandles(row,column),xsBL,log10(mean(fftBL)),'g');
+                plot(plotHandles(row,column),xsBL,logMeanFFTBL,'g');
                 hold(plotHandles(row,column),'on');
-                plot(plotHandles(row,column),xsST,log10(mean(fftST)),plotColor);
+                plot(plotHandles(row,column),xsST,logMeanFFTST,plotColor);
             end
             
             if analysisType == 4
                 if xsBL == xsST %#ok<BDSCI>
-                    plot(plotHandles(row,column),xsBL,log10(mean(fftST))-log10(mean(fftBL)),'color',plotColor);
+                    plot(plotHandles(row,column),xsBL,logMeanFFTST-logMeanFFTBL,'color',plotColor);
                 else
                     disp('Choose same baseline and stimulus periods..');
                 end
@@ -909,13 +925,13 @@ else
         end
     end
     if strcmp(gridType,'EEG') && analysisType==1 % plot the topolot : default-single reference
-        if strcmp(capType,'actiCp64')
+        if strcmp(capType,'actiCap64')
             load('actiCap64.mat');
         else
             load('brainCap64.mat');
         end
         subplot(capERPHandle);cla(gca,'reset');axis off;colormap(jet);
-        topoplot(erpTopo,chanlocs,'electrodes','numbers','style','both','drawaxis','off');
+        topoplot(erpTopo,chanlocs,'electrodes','numbers','style','both','drawaxis','off','maplimits','maxmin');
         colorbar; title(['RMS ERP: ' num2str(ERPRange(1)) ' to ' num2str(ERPRange(2)) ' s' ' (SingleWire)']);
     end
 end
