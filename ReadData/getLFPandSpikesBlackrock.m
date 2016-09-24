@@ -65,7 +65,7 @@ if ~isempty(hFile)
     end
 else
     disp('Getting file info...')
-    [nsresult, hFile] = ns_OpenFile([folderIn fileName]);
+    [nsresult, hFile] = ns_OpenFile(fullfile(folderIn,fileName));
     if (nsresult ~= 0)
         error('Data file did not open!');
     else
@@ -118,7 +118,8 @@ for i=1:cAnalog
     end
 end
 
-segmentChannelNums = str2num(segmentLabels(:,5:end));
+segmentLabelsElec = mat2cell(segmentLabels(:,1:4),ones(size(segmentLabels(:,1:4),1),1),4);
+segmentChannelNums = str2num(segmentLabels(strcmp(segmentLabelsElec,'elec'),5:end)); % get segments only for spiking channels
 neuralChannelNums  = str2num(neuralLabels(:,5:end));
 
 % Display these numbers
@@ -292,17 +293,19 @@ if electrodeCount ~= 0
             clear neuralData
             [~,neuralData]  = ns_GetNeuralData(hFile, neuralListIDs(i),1,numberOfItems(neuralListIDs(i)));
 
-            clear spikeData
+            clear spikeData spikeID
             spikeData = cell(1,totalStim);
+            spikeID = cell(1,totalStim);
             for j=1:totalStim
-                spikeData{j} = neuralData(intersect(find(neuralData>=analysisOnsetTimes(j))...
-                    ,find(neuralData<analysisOnsetTimes(j)+deltaT)));
+                spikeID{j} = intersect(find(neuralData>=analysisOnsetTimes(j))...
+                    ,find(neuralData<analysisOnsetTimes(j)+deltaT));
+                spikeData{j} = neuralData(spikeID{j});
                 if ~isempty(spikeData{j})
                     spikeData{j} = spikeData{j} - goodStimTimes(j);
                 end
             end
             save(fullfile(outputFolder,['elec' num2str(neuralChannelsStored(i)) ... 
-                '_SID' num2str(SourceUnitID(i)) '.mat']),'spikeData','neuralInfo');
+                '_SID' num2str(SourceUnitID(i)) '.mat']),'spikeData','spikeID','neuralInfo');
         end
 
         % Write Spike information

@@ -14,9 +14,10 @@
 % Removed eyeRangeMS, eyeRangeLongMS and maxStimPos. Those are read from
 % the LL file directly.
 
-function saveEyePositionAndBehaviorData(subjectName,expDate,protocolName,folderSourceString,gridType,FsEye)
+function saveEyePositionAndBehaviorData(subjectName,expDate,protocolName,folderSourceString,gridType,FsEye,ignoreTargetStimFlag)
 
 if ~exist('FsEye','var');        FsEye=200;                             end
+if ~exist('ignoreTargetStimFlag','var'); ignoreTargetStimFlag = 0; end
 
 folderName    = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName);
 folderExtract = fullfile(folderName,'extractedData');
@@ -31,11 +32,11 @@ if strncmpi(protocolName,'SRC',3) % SRC
     saveEyeDataInDegSRC(subjectName,expDate,protocolName,folderSourceString,gridType);
 else
 
-    [allTrials,goodTrials,stimData,eyeData,eyeRangeMS] = getEyePositionAndBehavioralDataGRF(subjectName,expDate,protocolName,folderSourceString,FsEye); %#ok<*ASGLU,*NASGU>
+    [allTrials,goodTrials,stimData,eyeData,eyeRangeMS] = getEyePositionAndBehavioralDataGRF(subjectName,expDate,protocolName,folderSourceString,FsEye,ignoreTargetStimFlag); %#ok<*ASGLU,*NASGU>
     save(fullfile(folderExtract,'BehaviorData.mat'),'allTrials','goodTrials','stimData');
     save(fullfile(folderExtract,'EyeData.mat'),'eyeData','eyeRangeMS');
     
-   saveEyeDataInDegGRF(subjectName,expDate,protocolName,folderSourceString,gridType,FsEye);
+   saveEyeDataInDegGRF(subjectName,expDate,protocolName,folderSourceString,gridType,FsEye,ignoreTargetStimFlag);
 end
 end
 
@@ -143,9 +144,10 @@ for i=1:numTrials
     end
 end
 end
-function [allTrials,goodTrials,stimData,eyeData,eyeRangeMS] = getEyePositionAndBehavioralDataGRF(subjectName,expDate,protocolName,folderSourceString,Fs)
+function [allTrials,goodTrials,stimData,eyeData,eyeRangeMS] = getEyePositionAndBehavioralDataGRF(subjectName,expDate,protocolName,folderSourceString,Fs,fixationMode)
 
 if ~exist('Fs','var');                  Fs = 200;                       end    % Eye position sampled at 200 Hz.
+if ~exist('fixationMode','var'); fixationMode = 0; end
 
 datFileName = fullfile(folderSourceString,'data','rawData',[subjectName expDate],[subjectName expDate protocolName '.dat']);
 
@@ -184,8 +186,16 @@ for i=1:numTrials
 
         if (allTrials.eotCodes(trialEndIndex)==0) &&  (allTrials.certifiedNonInstruction(trialEndIndex)==1)
                 %&& (allTrials.catchTrials(trialEndIndex)==0) % Work on only Correct Trials, which are not instruction or uncertified trials. Include catch trials
-            
-            isCatchTrial = (allTrials.catchTrials(trialEndIndex)==1);
+
+            % In fixation mode, all trials are catch trials, irrespective
+            % of what the Lablib trial says. This is to work around a bug
+            % in the GaborRFMap UI where Catch Trials is not 100% even when
+            % run in fixation mode.
+            if fixationMode
+                isCatchTrial = 1;
+            else
+                isCatchTrial = (allTrials.catchTrials(trialEndIndex)==1);
+            end
             
             % Get Eye Data
             if isfield(trials,'eyeXData')
@@ -236,10 +246,17 @@ for i=1:numTrials
                     stimData.stimPos(stimNumber) = j;
                     
                     startingPos = max(1,stp+eyeRangePos(1));
-                    endingPos   = min(stp+eyeRangePos(2)-1,length(eyeX));
+                    if stp+eyeRangePos(2)-1 <= length(eyeX)
+                        endingPos = stp+eyeRangePos(2)-1;
+                        eyeData(stimNumber).eyePosDataX = eyeX(startingPos:endingPos);
+                        eyeData(stimNumber).eyePosDataY = eyeY(startingPos:endingPos);
+                    else
+                        numMissingEntries = (stp+eyeRangePos(2)-1) - length(eyeX);
+                        disp([num2str(numMissingEntries) ' entries missing and will be replaced by the last value']);
+                        eyeData(stimNumber).eyePosDataX = [eyeX(startingPos:end) ; (eyeX(end)+zeros(numMissingEntries,1))];
+                        eyeData(stimNumber).eyePosDataY = [eyeY(startingPos:end) ; (eyeY(end)+zeros(numMissingEntries,1))];
+                    end
      
-                    eyeData(stimNumber).eyePosDataX = eyeX(startingPos:endingPos);
-                    eyeData(stimNumber).eyePosDataY = eyeY(startingPos:endingPos);
                     
                     if isfield(trials,'eyeXData')
                         eyeData(stimNumber).eyeCal = trials.eyeCalibrationData.data.cal;
@@ -283,7 +300,7 @@ save(fullfile(folderSave,'eyeDataDeg.mat'),'eyeDataDegX','eyeDataDegY');
 save(fullfile(folderSave,'eyeSpeed.mat'),'eyeSpeedX','eyeSpeedY');
 
 end
-function saveEyeDataInDegGRF(subjectName,expDate,protocolName,folderSourceString,gridType,FsEye)
+function saveEyeDataInDegGRF(subjectName,expDate,protocolName,folderSourceString,gridType,FsEye,fixationMode)
 
 folderName    = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName);
 folderExtract = fullfile(folderName,'extractedData');
@@ -320,10 +337,10 @@ save(fullfile(folderSave,'eyeDataDeg.mat'),'eyeDataDegX','eyeDataDegY');
 % save([folderSave 'eyeSpeed.mat'],'eyeSpeedX','eyeSpeedY');
 
 % More data saved for GRF protocol
-[eyeXAllPos,eyeYAllPos,xs,durationsMS] = getEyeDataStimPosGRF(subjectName,expDate,protocolName,folderSourceString,FsEye);
+[eyeXAllPos,eyeYAllPos,xs,durationsMS] = getEyeDataStimPosGRF(subjectName,expDate,protocolName,folderSourceString,FsEye,fixationMode);
 save(fullfile(folderSave,'EyeDataStimPos.mat'),'eyeXAllPos','eyeYAllPos','xs','durationsMS');
 end
-function [eyeXAllPos,eyeYAllPos,xs,durationsMS] = getEyeDataStimPosGRF(subjectName,expDate,protocolName,folderSourceString,FsEye)
+function [eyeXAllPos,eyeYAllPos,xs,durationsMS] = getEyeDataStimPosGRF(subjectName,expDate,protocolName,folderSourceString,FsEye,fixationMode)
 
 intervalTimeMS=1000/FsEye;
 datFileName = fullfile(folderSourceString,'data','rawData',[subjectName expDate],[subjectName expDate protocolName '.dat']);
@@ -357,7 +374,15 @@ for i=1:numTrials
     if (trial.trialEnd.data == 0) && (trial.trial.data.instructTrial==0) && ...
             (trial.trialCertify.data==0) %&& (trial.trial.data.catchTrial==0)
         
-        isCatchTrial = (trial.trial.data.catchTrial==1);
+        % In fixation mode, all trials are catch trials, irrespective
+        % of what the Lablib trial says. This is to work around a bug
+        % in the GaborRFMap UI where Catch Trials is not 100% even when
+        % run in fixation mode.
+        if fixationMode
+            isCatchTrial = 1;
+        else
+            isCatchTrial = (trial.trial.data.catchTrial==1);
+        end
         
         % get eye data
         clear eX eY cal
@@ -395,8 +420,15 @@ for i=1:numTrials
                 edp = stimDurationMS/intervalTimeMS - 1;
                 list = stp:edp;
                 
-                eXshort = eX(stimOnsetPos+list);
-                eYshort = eY(stimOnsetPos+list);
+                if (stimOnsetPos+edp) <= length(eX)
+                    eXshort = eX(stimOnsetPos+list);
+                    eYshort = eY(stimOnsetPos+list);
+                else
+                    numMissingEntries = (stimOnsetPos+edp) - length(eX);
+                    disp([num2str(numMissingEntries) ' entries missing and will be replaced by the last value']);
+                    eXshort = [eX((stimOnsetPos+list(1)):end) (eX(end)+zeros(1,numMissingEntries))];
+                    eYshort = [eY((stimOnsetPos+list(1)):end) (eY(end)+zeros(1,numMissingEntries))];
+                end
 
                 eXshortDeg = cal.m11*eXshort + cal.m21 * eYshort + cal.tX;
                 eYshortDeg = cal.m12*eXshort + cal.m22 * eYshort + cal.tY;

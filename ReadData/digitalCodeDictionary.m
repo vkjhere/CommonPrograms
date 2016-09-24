@@ -21,6 +21,7 @@ codeList = [...
     'IT'; 
     'M0'; 
     'M1'; 
+    'MP'; 
     'ON'; 
     'OF'; 
     'OR'; 
