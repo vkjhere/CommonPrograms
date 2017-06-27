@@ -24,6 +24,10 @@ for i=1:length(useTheseIndices)
         protocolSourceData = fullfile(folderSourceString,'Data','rawData',protocolPrefix);
     elseif exist(fullfile(folderSourceString,'data','rawData',protocolPrefix),'dir')
         protocolSourceData = fullfile(folderSourceString,'data','rawData',protocolPrefix);
+    elseif exist(fullfile(folderSourceString,'Data','rawData',subjectName,protocolPrefix),'dir')
+        protocolSourceData = fullfile(folderSourceString,'Data','rawData',subjectName,protocolPrefix);
+    elseif exist(fullfile(folderSourceString,'data','rawData',subjectName,protocolPrefix),'dir')
+        protocolSourceData = fullfile(folderSourceString,'data','rawData',subjectName,protocolPrefix);
     else
         error('Unable to find data folder in source path');
     end

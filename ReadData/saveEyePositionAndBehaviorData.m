@@ -245,18 +245,23 @@ for i=1:numTrials
                     stimData.stimOnsetTimeFromFixate(stimNumber) = stimTime-trials.fixate.timeMS;
                     stimData.stimPos(stimNumber) = j;
                     
-                    startingPos = max(1,stp+eyeRangePos(1));
-                    if stp+eyeRangePos(2)-1 <= length(eyeX)
-                        endingPos = stp+eyeRangePos(2)-1;
-                        eyeData(stimNumber).eyePosDataX = eyeX(startingPos:endingPos);
-                        eyeData(stimNumber).eyePosDataY = eyeY(startingPos:endingPos);
+                    if isempty(stp)
+                        disp('Eye data entries missing and will be replaced by zeros');
+                        eyeData(stimNumber).eyePosDataX = zeros(diff(eyeRangePos),1);
+                        eyeData(stimNumber).eyePosDataY = zeros(diff(eyeRangePos),1);
                     else
-                        numMissingEntries = (stp+eyeRangePos(2)-1) - length(eyeX);
-                        disp([num2str(numMissingEntries) ' entries missing and will be replaced by the last value']);
-                        eyeData(stimNumber).eyePosDataX = [eyeX(startingPos:end) ; (eyeX(end)+zeros(numMissingEntries,1))];
-                        eyeData(stimNumber).eyePosDataY = [eyeY(startingPos:end) ; (eyeY(end)+zeros(numMissingEntries,1))];
+                        startingPos = max(1,stp+eyeRangePos(1));
+                        if stp+eyeRangePos(2)-1 <= length(eyeX)
+                            endingPos = stp+eyeRangePos(2)-1;
+                            eyeData(stimNumber).eyePosDataX = eyeX(startingPos:endingPos);
+                            eyeData(stimNumber).eyePosDataY = eyeY(startingPos:endingPos);
+                        else
+                            numMissingEntries = (stp+eyeRangePos(2)-1) - length(eyeX);
+                            disp([num2str(numMissingEntries) ' entries missing and will be replaced by the last value']);
+                            eyeData(stimNumber).eyePosDataX = [eyeX(startingPos:end) ; (eyeX(end)+zeros(numMissingEntries,1))];
+                            eyeData(stimNumber).eyePosDataY = [eyeY(startingPos:end) ; (eyeY(end)+zeros(numMissingEntries,1))];
+                        end
                     end
-     
                     
                     if isfield(trials,'eyeXData')
                         eyeData(stimNumber).eyeCal = trials.eyeCalibrationData.data.cal;
