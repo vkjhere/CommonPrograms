@@ -14,7 +14,7 @@ if ~exist('folderDestinationString','var'); folderDestinationString=folderSource
 fileName = [subjectName expDate protocolName '.nev'];
 folderName = fullfile(folderDestinationString,'data',subjectName,gridType,expDate,protocolName);
 makeDirectory(folderName);
-folderIn = fullfile(folderSourceString,'data','rawData',[subjectName expDate]);
+folderIn = fullfile(folderSourceString,'data','rawData',subjectName,[subjectName expDate]);
 folderExtract = fullfile(folderName,'extractedData');
 makeDirectory(folderExtract);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -108,7 +108,7 @@ ainpCount = 0;
 for i=1:cAnalog
     if strcmp(analogLabels(i,1:4),'elec') || strcmp(analogLabels(i,1:4),'chan')
         electrodeCount = electrodeCount+1;
-        electrodeNums(electrodeCount) = str2num(analogLabels(i,5:end)); %#ok<*AGROW,*ST2NM>
+        electrodeNums(electrodeCount) = str2num(analogLabels(i,7:end)); %#ok<*AGROW,*ST2NM>
         electrodeListIDs(electrodeCount,:) = analogList(i);
         
     elseif strcmp(analogLabels(i,1:4),'ainp')
@@ -119,8 +119,8 @@ for i=1:cAnalog
 end
 
 segmentLabelsElec = mat2cell(segmentLabels(:,1:4),ones(size(segmentLabels(:,1:4),1),1),4);
-segmentChannelNums = str2num(segmentLabels(strcmp(segmentLabelsElec,'elec'),5:end)); % get segments only for spiking channels
-neuralChannelNums  = str2num(neuralLabels(:,5:end));
+segmentChannelNums = str2num(segmentLabels(strcmp(segmentLabelsElec,'elec'),7:end)); % get segments only for spiking channels
+neuralChannelNums  = str2num(neuralLabels(:,7:end));
 
 % Display these numbers
 disp(['Total number of Analog channels recorded: ' num2str(cAnalog) ', electrodes: ' num2str(electrodeCount) ', Inp: ' num2str(ainpCount)]);
