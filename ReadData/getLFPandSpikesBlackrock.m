@@ -24,12 +24,13 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function getLFPandSpikesBlackrock(subjectName,expDate,protocolName,folderSourceString,gridType,analogElectrodesToStore,neuralChannelsToStore,...
-    goodStimTimes,timeStartFromBaseLine,deltaT,Fs,hFile,getLFP,getSpikes)
+    goodStimTimes,timeStartFromBaseLine,deltaT,Fs,hFile,getLFP,getSpikes,startLabelPos)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Initialize %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if ~exist('hFile','var');        hFile = [];                            end
 if ~exist('getLFP','var');       getLFP=1;                              end
 if ~exist('getSpikes','var');    getSpikes=1;                           end
+if ~exist('startLabelPos','var');startLabelPos=5;                       end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 fileName = [subjectName expDate protocolName '.nev'];
@@ -108,7 +109,7 @@ ainpCount = 0;
 for i=1:cAnalog
     if strcmp(analogLabels(i,1:4),'elec') || strcmp(analogLabels(i,1:4),'chan')
         electrodeCount = electrodeCount+1;
-        electrodeNums(electrodeCount) = str2num(analogLabels(i,7:end)); %#ok<*AGROW,*ST2NM>
+        electrodeNums(electrodeCount) = str2num(analogLabels(i,startLabelPos:end)); %#ok<*AGROW,*ST2NM>
         electrodeListIDs(electrodeCount,:) = analogList(i);
         
     elseif strcmp(analogLabels(i,1:4),'ainp')
@@ -119,8 +120,8 @@ for i=1:cAnalog
 end
 
 segmentLabelsElec = mat2cell(segmentLabels(:,1:4),ones(size(segmentLabels(:,1:4),1),1),4);
-segmentChannelNums = str2num(segmentLabels(strcmp(segmentLabelsElec,'elec'),7:end)); % get segments only for spiking channels
-neuralChannelNums  = str2num(neuralLabels(:,7:end));
+segmentChannelNums = str2num(segmentLabels(strcmp(segmentLabelsElec,'elec'),startLabelPos:end)); % get segments only for spiking channels
+neuralChannelNums  = str2num(neuralLabels(:,startLabelPos:end));
 
 % Display these numbers
 disp(['Total number of Analog channels recorded: ' num2str(cAnalog) ', electrodes: ' num2str(electrodeCount) ', Inp: ' num2str(ainpCount)]);
@@ -139,7 +140,7 @@ if getLFP && (cAnalog>0)
     
     % Set appropriate time Range
     numSamples = deltaT*Fs;
-    timeVals = timeStartFromBaseLine+ (1/Fs:1/Fs:deltaT); %#ok<NASGU>
+    timeVals = timeStartFromBaseLine+ (1/Fs:1/Fs:deltaT);
 
     % The optional input analogChannelToStore contains the list of channels that
     % should be recorded
@@ -192,7 +193,7 @@ if getLFP && (cAnalog>0)
                 disp(['elec' num2str(electrodesStored(i))]);
 
                 clear analogInfo
-                [~, analogInfo] = ns_GetAnalogInfo(hFile, electrodeListIDsStored(i)); %#ok<NASGU>
+                [~, analogInfo] = ns_GetAnalogInfo(hFile, electrodeListIDsStored(i));
 
                 clear analogData
                 analogData = zeros(totalStim,numSamples);
@@ -210,7 +211,7 @@ if getLFP && (cAnalog>0)
             disp(['ainp' num2str(analogInputNums(i))]);
             
             clear analogInfo
-            [~, analogInfo] = ns_GetAnalogInfo(hFile, analogInputListIDs(i)); %#ok<NASGU>
+            [~, analogInfo] = ns_GetAnalogInfo(hFile, analogInputListIDs(i));
             
             clear analogData
             analogData = zeros(totalStim,numSamples);
@@ -229,7 +230,7 @@ if getLFP && (cAnalog>0)
     if electrodeCount == 0
         electrodesStored = 0;
     end
-    analogChannelsStored = electrodesStored; %#ok<NASGU>
+    analogChannelsStored = electrodesStored;
     save(fullfile(outputFolder,'lfpInfo.mat'),'analogChannelsStored','electrodesStored','analogInputNums','goodStimPos','timeVals');
 end
 
@@ -359,17 +360,17 @@ if electrodeCount ~= 0
 
         for i=1:cSegmentListIDs
             clear segmentInfo
-            [~, segmentInfo] = ns_GetSegmentInfo(hFile, segmentListIDs(i)); %#ok<NASGU>
+            [~, segmentInfo] = ns_GetSegmentInfo(hFile, segmentListIDs(i));
             %disp([segmentChannelsStored(i)]);
 
             clear timeStamp segmentData sampleCount unitID
-            [~,timeStamp,segmentData, sampleCount, unitID]  = ns_GetSegmentData(hFile, segmentListIDs(i),1:min(1000000,numberOfItems(segmentListIDs(i)))); %#ok<NASGU,ASGLU>
+            [~,timeStamp,segmentData, sampleCount, unitID]  = ns_GetSegmentData(hFile, segmentListIDs(i),1:min(1000000,numberOfItems(segmentListIDs(i))));
 
             save(fullfile(outputFolder,['elec' num2str(segmentChannelsStored(i)) '.mat']),'segmentData','segmentInfo','timeStamp','unitID','sampleCount');
         end
 
         % Write Spike information
-        numItems = numberOfItems(segmentListIDs); %#ok<NASGU>
+        numItems = numberOfItems(segmentListIDs);
         save(fullfile(outputFolder,'segmentInfo.mat'),'segmentChannelsStored','numItems');
     end
 end

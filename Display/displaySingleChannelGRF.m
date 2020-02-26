@@ -1358,11 +1358,20 @@ end
 function [parameterCombinations,aValsUnique,eValsUnique,sValsUnique,...
     fValsUnique,oValsUnique,cValsUnique,tValsUnique] = loadParameterCombinations(folderExtract)
 
-load(fullfile(folderExtract,'parameterCombinations.mat'));
+p = load(fullfile(folderExtract,'parameterCombinations.mat'));
 
-if ~exist('sValsUnique','var');    sValsUnique=rValsUnique;             end
-if ~exist('cValsUnique','var');    cValsUnique=100;                     end
-if ~exist('tValsUnique','var');    tValsUnique=0;                       end
+if ~isfield(p,'parameterCombinations2') % Not a plaid stimulus
+    load(fullfile(folderExtract,'parameterCombinations.mat'));
+    
+    if ~exist('sValsUnique','var');    sValsUnique=rValsUnique;             end
+    if ~exist('cValsUnique','var');    cValsUnique=100;                     end
+    if ~exist('tValsUnique','var');    tValsUnique=0;                       end
+    
+else
+    [parameterCombinations,aValsUnique,eValsUnique,sValsUnique,...
+        fValsUnique,oValsUnique,cValsUnique,tValsUnique] = makeCombinedParameterCombinations(folderExtract);
+end
+
 end
 function badTrials = loadBadTrials(badTrialFile)
 load(badTrialFile);

@@ -23,14 +23,18 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [digitalTimeStamps,digitalEvents]=extractDigitalDataBrainProducts(subjectName,expDate,protocolName,folderSourceString,gridType,deltaLimitMS)
+function [digitalTimeStamps,digitalEvents]=extractDigitalDataBrainProducts(subjectName,expDate,protocolName,folderSourceString,gridType,deltaLimitMS,fileName)
 
 % We only consider codes that are separated by at least deltaLimit ms to make sure
 % that none of the codes are during the transition period.
 if ~exist('deltaLimitMS','var');    deltaLimitMS = 3;                   end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-fileName = [subjectName expDate protocolName '.vhdr'];
+if ~exist('fileName','var')
+    fileName = [subjectName expDate protocolName '.vhdr'];
+else
+    fileName = [fileName '.vhdr'];
+end
 folderName = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName);
 makeDirectory(folderName);
 folderIn = fullfile(folderSourceString,'data','rawData',[subjectName expDate]);
