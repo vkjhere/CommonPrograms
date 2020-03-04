@@ -21,6 +21,11 @@ function LLFileExistsFlag = saveLLData(subjectName,expDate,protocolName,folderSo
 if ~exist('folderDestinationString','var'); folderDestinationString=folderSourceString; end
 
 datFileName = fullfile(folderSourceString,'data','rawData',[subjectName expDate],[subjectName expDate protocolName '.dat']);
+
+if ~exist(datFileName,'file')
+    datFileName = fullfile(folderSourceString,'data','rawData',subjectName,[subjectName expDate],[subjectName expDate protocolName '.dat']);
+end
+
 if ~exist(datFileName,'file')
     disp('Lablib data file does not exist');
     LLFileExistsFlag = 0;
@@ -235,6 +240,9 @@ function LL = getStimResultsLLGRF(subjectName,expDate,protocolName,folderSourceS
 
 datFileName = fullfile(folderSourceString,'data','rawData',[subjectName expDate],[subjectName expDate protocolName '.dat']);
 
+if ~exist(datFileName,'file')
+    datFileName = fullfile(folderSourceString,'data','rawData',subjectName,[subjectName expDate],[subjectName expDate protocolName '.dat']);
+end
 % Get Lablib data
 header = readLLFile('i',datFileName);
 

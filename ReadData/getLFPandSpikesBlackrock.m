@@ -24,14 +24,14 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function getLFPandSpikesBlackrock(subjectName,expDate,protocolName,folderSourceString,gridType,analogElectrodesToStore,neuralChannelsToStore,...
-    goodStimTimes,timeStartFromBaseLine,deltaT,Fs,hFile,getLFP,getSpikes,startLabelPos)
+    goodStimTimes,timeStartFromBaseLine,deltaT,Fs,hFile,getLFP,getSpikes,startLabelPosElec,startLabelPosChan)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Initialize %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if ~exist('hFile','var');        hFile = [];                            end
 if ~exist('getLFP','var');       getLFP=1;                              end
 if ~exist('getSpikes','var');    getSpikes=1;                           end
-if ~exist('startLabelPos','var');startLabelPos=5;                       end
-
+if ~exist('startLabelPosElec','var');startLabelPosElec=5;               end
+if ~exist('startLabelPosChan','var');startLabelPosChan=5;               end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 fileName = [subjectName expDate protocolName '.nev'];
 folderName = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName);
@@ -107,11 +107,14 @@ electrodeCount = 0;
 ainpCount = 0;
 
 for i=1:cAnalog
-    if strcmp(analogLabels(i,1:4),'elec') || strcmp(analogLabels(i,1:4),'chan')
+    if strcmp(analogLabels(i,1:4),'elec')
         electrodeCount = electrodeCount+1;
-        electrodeNums(electrodeCount) = str2num(analogLabels(i,startLabelPos:end)); %#ok<*AGROW,*ST2NM>
+        electrodeNums(electrodeCount) = str2num(analogLabels(i,startLabelPosElec:end)); %#ok<*AGROW,*ST2NM>
         electrodeListIDs(electrodeCount,:) = analogList(i);
-        
+    elseif strcmp(analogLabels(i,1:4),'chan')
+        electrodeCount = electrodeCount+1;
+        electrodeNums(electrodeCount) = str2num(analogLabels(i,startLabelPosChan:end)); %#ok<*AGROW,*ST2NM>
+        electrodeListIDs(electrodeCount,:) = analogList(i);
     elseif strcmp(analogLabels(i,1:4),'ainp')
         ainpCount = ainpCount+1;
         analogInputNums(ainpCount) = str2num(analogLabels(i,5:end));
@@ -120,8 +123,8 @@ for i=1:cAnalog
 end
 
 segmentLabelsElec = mat2cell(segmentLabels(:,1:4),ones(size(segmentLabels(:,1:4),1),1),4);
-segmentChannelNums = str2num(segmentLabels(strcmp(segmentLabelsElec,'elec'),startLabelPos:end)); % get segments only for spiking channels
-neuralChannelNums  = str2num(neuralLabels(:,startLabelPos:end));
+segmentChannelNums = str2num(segmentLabels(strcmp(segmentLabelsElec,'elec'),startLabelPosElec:end)); % get segments only for spiking channels
+neuralChannelNums  = str2num(neuralLabels(:,startLabelPosElec:end));
 
 % Display these numbers
 disp(['Total number of Analog channels recorded: ' num2str(cAnalog) ', electrodes: ' num2str(electrodeCount) ', Inp: ' num2str(ainpCount)]);

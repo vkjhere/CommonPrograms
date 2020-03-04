@@ -13,19 +13,20 @@
 % This is copied from extractDigitalDataGRF. This reads all the digital
 % data from LL file
 
-function [goodStimNums,goodStimTimes,side] = extractDigitalDataGRFLL(folderExtract,ignoreTargetStimFlag,frameRate)
+function [goodStimNums,goodStimTimes,side] = extractDigitalDataGRFLL(folderExtract,ignoreTargetStimFlag,frameRate,maxDiffCutoffMS)
 
 if ~exist('ignoreTargetStimFlag','var');   ignoreTargetStimFlag=0;      end
 if ~exist('frameRate','var');              frameRate=100;               end
+if ~exist('maxDiffCutoffMS','var');        maxDiffCutoffMS=5;           end
 
-stimResults = readDigitalCodesGRF(folderExtract,frameRate); % writes stimResults and trialResults
+stimResults = readDigitalCodesGRF(folderExtract,frameRate,maxDiffCutoffMS); % writes stimResults and trialResults
 side = stimResults.side;
 [goodStimNums,goodStimTimes] = getGoodStimNumsGRF(folderExtract,ignoreTargetStimFlag); % Good stimuli
 save(fullfile(folderExtract,'goodStimNums.mat'),'goodStimNums','goodStimTimes');
 end
 
 % GRF Specific protocols
-function [stimResults,trialResults,trialEvents] = readDigitalCodesGRF(folderExtract,frameRate)
+function [stimResults,trialResults,trialEvents] = readDigitalCodesGRF(folderExtract,frameRate,maxDiffCutoffMS)
 
 if ~exist('frameRate','var');              frameRate=100;               end
 kForceQuit=7;
@@ -161,8 +162,9 @@ diffTD = diff(trialStartTimes); diffTL = diff(trialStartTimesLL);
 maxDiffMS = 1000*max(abs(diffTD(:) - diffTL(:)));
 dEOT = max(abs(diff(eotCodes(:)-eotCodesLL(:))));
 
-maxDiffCutoffMS = 5; % throw an error if the difference exceeds 5 ms
-if maxDiffMS > maxDiffCutoffMS || dEOT > 0
+if maxDiffMS > maxDiffCutoffMS
+    error(['Maximum difference between LL and LFP/EEG start times: ' num2str(maxDiffMS) ' ms exceeds the threshold of ' num2str(maxDiffCutoffMS) ' ms']);
+elseif dEOT > 0
     error('The digital codes do not match with the LL data...');
 else
     disp(['Maximum difference between LL and LFP/EEG start times: ' num2str(maxDiffMS) ' ms']);
