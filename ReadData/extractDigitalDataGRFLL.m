@@ -13,20 +13,24 @@
 % This is copied from extractDigitalDataGRF. This reads all the digital
 % data from LL file
 
-function [goodStimNums,goodStimTimes,side] = extractDigitalDataGRFLL(folderExtract,ignoreTargetStimFlag,frameRate,maxDiffCutoffMS)
+% Added option to store properties of both gabors even when one is hidden
+% (which can happen for color stimuli for example)
+
+function [goodStimNums,goodStimTimes,side] = extractDigitalDataGRFLL(folderExtract,ignoreTargetStimFlag,frameRate,maxDiffCutoffMS,recordBothStimFlag)
 
 if ~exist('ignoreTargetStimFlag','var');   ignoreTargetStimFlag=0;      end
 if ~exist('frameRate','var');              frameRate=100;               end
 if ~exist('maxDiffCutoffMS','var');        maxDiffCutoffMS=5;           end
+if ~exist('recordBothStimFlag','var');     recordBothStimFlag=0;        end
 
-stimResults = readDigitalCodesGRF(folderExtract,frameRate,maxDiffCutoffMS); % writes stimResults and trialResults
+stimResults = readDigitalCodesGRF(folderExtract,frameRate,maxDiffCutoffMS,recordBothStimFlag); % writes stimResults and trialResults
 side = stimResults.side;
 [goodStimNums,goodStimTimes] = getGoodStimNumsGRF(folderExtract,ignoreTargetStimFlag); % Good stimuli
 save(fullfile(folderExtract,'goodStimNums.mat'),'goodStimNums','goodStimTimes');
 end
 
 % GRF Specific protocols
-function [stimResults,trialResults,trialEvents] = readDigitalCodesGRF(folderExtract,frameRate,maxDiffCutoffMS)
+function [stimResults,trialResults,trialEvents] = readDigitalCodesGRF(folderExtract,frameRate,maxDiffCutoffMS,recordBothStimFlag)
 
 if ~exist('frameRate','var');              frameRate=100;               end
 kForceQuit=7;
@@ -63,19 +67,27 @@ end
 % Load Lablib data structure
 load(fullfile(folderExtract,'LL.mat'));
 
-if sum(LL.stimType1)>0 && sum(LL.stimType2)>0 % Plaids - Siddhesh Sep 8, 2018
+if recordBothStimFlag
     activeSide=3;
-elseif sum(LL.stimType1)>0 && sum(LL.stimType2)==0
-    activeSide=0;
-elseif sum(LL.stimType2)>0 && sum(LL.stimType1)==0
-    activeSide=1;
 else
-    error('No stimuli recorded in Lablib stream!');
+    if sum(LL.stimType1)>0 && sum(LL.stimType2)>0 % Plaids - Siddhesh Sep 8, 2018
+        activeSide=3;
+    elseif sum(LL.stimType1)>0 && sum(LL.stimType2)==0
+        activeSide=0;
+    elseif sum(LL.stimType2)>0 && sum(LL.stimType1)==0
+        activeSide=1;
+    else
+        error('No stimuli recorded in Lablib stream!');
+    end
 end
 
 %%%%%%%%%%%%%%%%% Get info from LL to construct stimResults %%%%%%%%%%%%%%%
 if activeSide==3 % Plaids - Siddhesh Sep 8, 2018
-    validMap = intersect(find(LL.stimType1>0),find(LL.stimType2>0));
+    if recordBothStimFlag
+        validMap = union(find(LL.stimType1>0),find(LL.stimType2>0)); % Record when either one is present
+    else
+        validMap = intersect(find(LL.stimType1>0),find(LL.stimType2>0));
+    end
     aziLL = reshape([LL.azimuthDeg1(validMap);LL.azimuthDeg2(validMap)],1,[]);
     eleLL = reshape([LL.elevationDeg1(validMap);LL.elevationDeg2(validMap)],1,[]);
     sigmaLL = reshape([LL.sigmaDeg1(validMap);LL.sigmaDeg2(validMap)],1,[]);
