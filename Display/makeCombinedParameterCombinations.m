@@ -15,7 +15,7 @@ function [parameterCombinations,aValsUnique,eValsUnique,sValsUnique,...
 if ~exist('sideChoice','var');      sideChoice=[];                      end
 
 p = load(fullfile(folderExtract,'parameterCombinations.mat'));
-[a1Len,e1Len,s1Len,f1Len,o1Len,c1Len,t1Len] = size(p.parameterCombinations); % Side 1
+[a1Len,e1Len,s1Len,f1Len,o1Len,c1Len,t1Len] = size(p.parameterCombinations);  % Side 1
 [a2Len,e2Len,s2Len,f2Len,o2Len,c2Len,t2Len] = size(p.parameterCombinations2); % Side 2
 
 if isempty(sideChoice)
