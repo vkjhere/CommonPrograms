@@ -438,17 +438,17 @@ hSigmaPlot        = getPlotHandles(1,length(sValsUnique),sigmaGrid,0.002);
             channelNumber = neuralChannelsStored(channelPos);
             unitID = SourceUnitIDs(channelPos);
             plotSpikeData1Channel(plotHandles,channelNumber,s,f,o,c,t,folderSpikes,...
-                analysisType,timeVals,plotColor,unitID,folderName);
+                analysisType,timeVals,plotColor,unitID,folderName,sideChoice);
             plotSpikeData1Parameter1Channel(hTemporalFreqPlot,channelNumber,a,e,s,f,o,c,[],folderSpikes,...
-                analysisType,timeVals,plotColor,unitID,folderName);
+                analysisType,timeVals,plotColor,unitID,folderName,sideChoice);
             plotSpikeData1Parameter1Channel(hContrastPlot,channelNumber,a,e,s,f,o,[],t,folderSpikes,...
-                analysisType,timeVals,plotColor,unitID,folderName);
+                analysisType,timeVals,plotColor,unitID,folderName,sideChoice);
             plotSpikeData1Parameter1Channel(hOrientationPlot,channelNumber,a,e,s,f,[],c,t,folderSpikes,...
-                analysisType,timeVals,plotColor,unitID,folderName);
+                analysisType,timeVals,plotColor,unitID,folderName,sideChoice);
             plotSpikeData1Parameter1Channel(hSpatialFreqPlot,channelNumber,a,e,s,[],o,c,t,folderSpikes,...
-                analysisType,timeVals,plotColor,unitID,folderName);
+                analysisType,timeVals,plotColor,unitID,folderName,sideChoice);
             plotSpikeData1Parameter1Channel(hSigmaPlot,channelNumber,a,e,[],f,o,c,t,folderSpikes,...
-                analysisType,timeVals,plotColor,unitID,folderName);
+                analysisType,timeVals,plotColor,unitID,folderName,sideChoice);
         else
             analogChannelPos = get(hAnalogChannel,'val');
             analogChannelString = analogChannelStringArray{analogChannelPos};
@@ -910,7 +910,7 @@ end
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function plotSpikeData1Channel(plotHandles,channelNumber,s,f,o,c,t,folderSpikes,...
-analysisType,timeVals,plotColor,unitID,folderName)
+analysisType,timeVals,plotColor,unitID,folderName,sideChoice)
 titleFontSize = 12;
 
 folderExtract = fullfile(folderName,'extractedData');
@@ -979,7 +979,7 @@ end
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function plotSpikeData1Parameter1Channel(plotHandles,channelNumber,a,e,s,f,o,c,t,folderSpikes,...
-analysisType,timeVals,plotColor,unitID,folderName)
+analysisType,timeVals,plotColor,unitID,folderName,sideChoice)
 titleFontSize = 12;
 
 folderExtract = fullfile(folderName,'extractedData');

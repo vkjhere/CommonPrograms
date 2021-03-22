@@ -176,17 +176,34 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ECoG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if strcmpi(gridType,'ECoG')
     
-    goodElectrodeList = [1:34 65:96];
-    electrodeArray = ...
-        [00 89 81 73 65 25 17 09 01 00;
-        00 90 82 74 66 26 18 10 02 00;
-        00 91 83 75 67 27 19 11 03 00;
-        34 92 84 76 68 28 20 12 04 33;
-        00 93 85 77 69 29 21 13 05 00;
-        00 94 86 78 70 30 22 14 06 00;
-        00 95 87 79 71 31 23 15 07 00;
-        00 96 88 80 72 32 24 16 08 00];
-    
+    if gridLayout==14
+        goodElectrodeList = 1:4;
+        electrodeArray = [1 2 3 4];
+    elseif gridLayout==24
+        goodElectrodeList = 1:8;
+        electrodeArray = ...
+            [1 2 3 4;
+             5 6 7 8];
+    elseif gridLayout==44
+        goodElectrodeList = 1:16;
+        electrodeArray = ...
+            [01 02 03 04;
+             05 06 07 08
+             09 10 11 12
+             13 14 15 16];
+    else
+        
+        goodElectrodeList = [1:34 65:96];
+        electrodeArray = ...
+            [00 89 81 73 65 25 17 09 01 00;
+            00 90 82 74 66 26 18 10 02 00;
+            00 91 83 75 67 27 19 11 03 00;
+            34 92 84 76 68 28 20 12 04 33;
+            00 93 85 77 69 29 21 13 05 00;
+            00 94 86 78 70 30 22 14 06 00;
+            00 95 87 79 71 31 23 15 07 00;
+            00 96 88 80 72 32 24 16 08 00];
+    end
     if isempty(setdiff(goodElectrodeList,electrodeNum))
         disp('Electrode Number out of range');
     else
