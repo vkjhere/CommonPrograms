@@ -119,7 +119,7 @@ if strcmpi(gridType,'Microelectrode')
             79 80 84 86 87 89 91 94 63 95;
             00 81 83 85 88 90 92 93 96 00];
         
-    elseif strcmp(subjectName,'alpa') || strcmp(subjectName,'kesari') || isempty(subjectName)
+    elseif strcmp(subjectName,'alpa') || strcmp(subjectName,'kesari') || strcmp(subjectName,'coco') || isempty(subjectName)
         
         electrodeArray = ...
             [00 88 78 68 58 48 38 28 18 00;
@@ -133,7 +133,7 @@ if strcmpi(gridType,'Microelectrode')
             89 80 70 60 50 40 30 20 10 01;
             00 79 69 59 49 39 29 19 09 00];
         
-    elseif strcmp(subjectName,'coco') || strcmp(subjectName,'dona')
+    elseif  strcmp(subjectName,'dona')
         
         electrodeArray = ...
             [96 90 84 78 72 66 60 54;
