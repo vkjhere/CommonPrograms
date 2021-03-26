@@ -1,6 +1,6 @@
 function getImpedanceData(subjectName,expDate,folderSourceString,gridType)
 
-folderNameRawData = fullfile(folderSourceString,'data','rawData',[subjectName expDate]);
+folderNameRawData = fullfile(folderSourceString,'rawData',subjectName,[subjectName expDate]); % Changed to the new format
 folderNameSave = fullfile(folderSourceString,'data',subjectName,gridType,expDate);
 makeDirectory(folderNameSave);
 

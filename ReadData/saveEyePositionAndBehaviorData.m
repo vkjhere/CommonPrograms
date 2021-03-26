@@ -46,6 +46,9 @@ function [allTrials,goodTrials,stimData,eyeData,eyeRangeMS] = getEyePositionAndB
 if ~exist('Fs','var');                   Fs = 200;                      end    % Eye position sampled at 200 Hz.
 
 datFileName = fullfile(folderSourceString,'data','rawData',[subjectName expDate],[subjectName expDate protocolName '.dat']);
+if ~exist(datFileName,'file')
+    datFileName = fullfile(folderSourceString,'rawData',subjectName,[subjectName expDate],[subjectName expDate protocolName '.dat']);
+end
 
 % Get Lablib data
 header = readLLFile('i',datFileName);
@@ -150,6 +153,9 @@ if ~exist('Fs','var');                  Fs = 200;                       end    %
 if ~exist('fixationMode','var'); fixationMode = 0; end
 
 datFileName = fullfile(folderSourceString,'data','rawData',[subjectName expDate],[subjectName expDate protocolName '.dat']);
+if ~exist(datFileName,'file')
+    datFileName = fullfile(folderSourceString,'rawData',subjectName,[subjectName expDate],[subjectName expDate protocolName '.dat']);
+end
 
 % Get Lablib data
 header = readLLFile('i',datFileName);
@@ -350,6 +356,10 @@ function [eyeXAllPos,eyeYAllPos,xs,durationsMS] = getEyeDataStimPosGRF(subjectNa
 intervalTimeMS=1000/FsEye;
 datFileName = fullfile(folderSourceString,'data','rawData',[subjectName expDate],[subjectName expDate protocolName '.dat']);
 
+if ~exist(datFileName,'file')
+    datFileName = fullfile(folderSourceString,'rawData',subjectName,[subjectName expDate],[subjectName expDate protocolName '.dat']);
+end
+
 % Get Lablib data
 header = readLLFile('i',datFileName);
 
@@ -357,7 +367,7 @@ minFixationDurationMS = round((1-header.behaviorSetting.data.fixateJitterPC/100)
 stimDurationMS = header.mapStimDurationMS.data;
 interStimDurationMS = header.mapInterstimDurationMS.data;
 responseTimeMS = header.responseTimeMS.data;
-maxStimPos = ceil(header.maxTargetTimeMS.data + responseTimeMS)/(stimDurationMS+interStimDurationMS) +1;
+maxStimPos = ceil(ceil(header.maxTargetTimeMS.data + responseTimeMS)/(stimDurationMS+interStimDurationMS) +1);
 
 durationsMS.minFixationDurationMS = minFixationDurationMS;
 durationsMS.interStimDurationMS = interStimDurationMS;
@@ -409,9 +419,9 @@ for i=1:numTrials
         end
         
         if isCatchTrial
-            numUsefulStim = trial.trial.data.numStim; % these are the useful stimuli, including target.
+            numUsefulStim = min(trial.trial.data.numStim,maxStimPos); % these are the useful stimuli, including target.
         else
-            numUsefulStim = trial.trial.data.targetIndex; % these are the useful stimuli, excluding target.
+            numUsefulStim = min(trial.trial.data.targetIndex,maxStimPos); % these are the useful stimuli, excluding target.
         end
         
         stimOnTimes = trial.stimulusOnTime.timeMS;

@@ -27,6 +27,10 @@ if ~exist(datFileName,'file')
 end
 
 if ~exist(datFileName,'file')
+    datFileName = fullfile(folderSourceString,'rawData',subjectName,[subjectName expDate],[subjectName expDate protocolName '.dat']);
+end
+
+if ~exist(datFileName,'file')
     disp('Lablib data file does not exist');
     LLFileExistsFlag = 0;
 else
@@ -51,6 +55,9 @@ function [LL,targetInfo,psyInfo,reactInfo] = getStimResultsLLSRC(subjectName,exp
 frameISIinMS=1000/frameRate;
 
 datFileName = fullfile(folderSourceString,'data','rawData',[subjectName expDate],[subjectName expDate protocolName '.dat']);
+if ~exist(datFileName,'file')
+    datFileName = fullfile(folderSourceString,'rawData',subjectName,[subjectName expDate],[subjectName expDate protocolName '.dat']);
+end
 
 % Get Lablib data
 header = readLLFile('i',datFileName);
@@ -243,6 +250,11 @@ datFileName = fullfile(folderSourceString,'data','rawData',[subjectName expDate]
 if ~exist(datFileName,'file')
     datFileName = fullfile(folderSourceString,'data','rawData',subjectName,[subjectName expDate],[subjectName expDate protocolName '.dat']);
 end
+
+if ~exist(datFileName,'file')
+    datFileName = fullfile(folderSourceString,'rawData',subjectName,[subjectName expDate],[subjectName expDate protocolName '.dat']);
+end
+
 % Get Lablib data
 header = readLLFile('i',datFileName);
 

@@ -192,10 +192,10 @@ timingHeight = 0.1; timingTextWidth = 0.5; timingBoxWidth = 0.25;
 hTimingPanel = uipanel('Title','Timing','fontSize', fontSizeLarge, ...
     'Unit','Normalized','Position',[timingStartPos panelStartHeight timingPanelWidth panelHeight]);
 
-signalRange = [-0.1 0.5];
-fftRange = [0 250];
-baseline = [-0.2 0];
-stimPeriod = [0.2 0.4];
+signalRange = [-0.2 1];
+fftRange = [0 100];
+baseline = [-0.5 0];
+stimPeriod = [0.25 0.75];
 
 % Signal Range
 uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
