@@ -106,6 +106,10 @@ startTime = [];
 endTime = [];
 trialCertify = [];
 
+% Added for new SRC
+newSRCFlag = 0;
+changeInOrientation = [];
+
 % Stimulus Properties
 allStimulusOnTimes = [];
 stimType0 = [];
@@ -160,11 +164,32 @@ for i=1:numTrials
     end
     
     if isfield(trials,'trial')
-        thisCatchTrial    = [trials.trial.data.catchTrial];
-        thisInstructTrial = [trials.trial.data.instructTrial];
-        thisAttendLoc     = [trials.trial.data.attendLoc];
-        thisTargetContrastIndex     = [trials.trial.data.targetContrastIndex];
-        thisTargetTemporalFreqIndex = [trials.trial.data.targetTemporalFreqIndex];
+        thisTrialData = trials.trial.data;
+        thisCatchTrial    = [thisTrialData.catchTrial];
+        thisInstructTrial = [thisTrialData.instructTrial];
+        thisAttendLoc     = [thisTrialData.attendLoc];
+        thisTargetContrastIndex     = [thisTrialData.targetContrastIndex];
+        thisTargetTemporalFreqIndex = [thisTrialData.targetTemporalFreqIndex];
+        
+        if isfield(thisTrialData,'changeInOrientationTF2')
+            newSRCFlag=1;
+        else
+            newSRCFlag=0;
+        end
+        
+        if newSRCFlag
+            if thisTargetTemporalFreqIndex==0
+                thisChangeInOrientation = thisTrialData.changeInOrientation;
+            elseif thisTargetTemporalFreqIndex==1
+                thisChangeInOrientation = thisTrialData.changeInOrientationTF1;
+            elseif thisTargetTemporalFreqIndex==2
+                thisChangeInOrientation = thisTrialData.changeInOrientationTF2;
+            elseif thisTargetTemporalFreqIndex==-1 % Catch trial
+                thisChangeInOrientation = 0;
+            else
+                error('Number of temporal frequencies must be 3');
+            end
+        end
         
         catchTrial    = cat(2,catchTrial,thisCatchTrial);
         instructTrial = cat(2,instructTrial,thisInstructTrial);
@@ -173,6 +198,9 @@ for i=1:numTrials
         targetContrastIndex    = cat(2,targetContrastIndex,thisTargetContrastIndex);
         targetTemporalFreqIndex = cat(2,targetTemporalFreqIndex,thisTargetTemporalFreqIndex);
         
+        if newSRCFlag
+            changeInOrientation = cat(2,changeInOrientation,thisChangeInOrientation);
+        end
         % Adding the getTrialInfoLLFile (from the MAC) details here
         
         % Nothing to update on catch trials or instruction trials
@@ -189,6 +217,10 @@ for i=1:numTrials
             targetInfo(countTI).targetIndex       = trials.trial.data.targetIndex;
             targetInfo(countTI).attendLoc         = thisAttendLoc;
             targetInfo(countTI).eotCode           = thisEOT;
+            
+            if newSRCFlag
+                targetInfo(countTI).changeInOrientation = thisChangeInOrientation;
+            end
             countTI=countTI+1;
             
             % In addition, if the EOTCODE is correct, wrong or failed, make
@@ -201,6 +233,10 @@ for i=1:numTrials
                 psyInfo(countPI).temporalFreqIndex = thisTargetTemporalFreqIndex;
                 psyInfo(countPI).attendLoc         = thisAttendLoc;
                 psyInfo(countPI).eotCode           = thisEOT;
+                
+                if newSRCFlag
+                    psyInfo(countPI).changeInOrientation = thisChangeInOrientation;
+                end
                 countPI=countPI+1;
             end
             
@@ -214,6 +250,9 @@ for i=1:numTrials
                 reactInfo(countRI).attendLoc         = thisAttendLoc;
                 reactInfo(countRI).reactTime         = trials.saccade.timeMS-trials.visualStimsOn.timeMS ...
                                                        -trials.stimulusOn.data(trials.trial.data.targetIndex+1)*frameISIinMS;
+                if newSRCFlag
+                    reactInfo(countRI).changeInOrientation = thisChangeInOrientation;
+                end
                 countRI=countRI+1;
             end
         end
@@ -229,6 +268,10 @@ LL.targetTemporalFreqIndex = targetTemporalFreqIndex;
 LL.startTime = startTime/1000; % in seconds
 LL.endTime = endTime/1000; % in seconds
 LL.trialCertify = trialCertify;
+
+if newSRCFlag
+    LL.changeInOrientation = changeInOrientation;
+end
 
 % Stimlus Properties
 LL.stimOnTimes = allStimulusOnTimes;
