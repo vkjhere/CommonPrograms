@@ -165,14 +165,17 @@ hTemporalFreq = uicontrol('Parent',hParameterPanel,'Unit','Normalized', ...
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Overwrite
-if strcmp(protocolType,'SF') % Compare SF
+if strcmpi(protocolType,'SF') % Compare SF
     set(hSpatialFreq,'Style','text','String','tested','FontSize',fontSizeSmall);
 
-elseif strcmp(protocolType,'TF')
+elseif strcmpi(protocolType,'TF')
     set(hTemporalFreq,'Style','text','String','tested','FontSize',fontSizeSmall);
 
-elseif strcmp(protocolType,'CON')
+elseif strcmpi(protocolType,'CON')
     set(hContrast,'Style','text','String','tested','FontSize',fontSizeSmall);
+    
+elseif strcmpi(protocolType,'ORI')
+    set(hOrientation,'Style','text','String','tested','FontSize',fontSizeSmall);
     
 else                        % compare Sigma
     set(hSigma,'Style','text','String','tested','FontSize',fontSizeSmall);
@@ -237,33 +240,45 @@ hTMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
         end
         
         % a, e and o are the same for all protocolListNumbers
-        a=1;e=1;o=get(hOrientation,'val');
+        a=1;e=1;
         
-        if strcmp(protocolType,'SF') % SF will be compared
+        if strcmpi(protocolType,'SF') % SF will be compared
             numberOfCategories = length(fValsUnique);
             s = get(hSigma,'val');
             f = numberOfCategories+1;  % Not required, computed for completeness
+            o = get(hOrientation,'val');
             c = get(hContrast,'val'); 
             t = get(hTemporalFreq,'val');
             
-        elseif strcmp(protocolType,'TF') % TF will be compared
+        elseif strcmpi(protocolType,'TF') % TF will be compared
             numberOfCategories = length(tValsUnique);
             s = get(hSigma,'val');
             f = get(hSpatialFreq,'val');
+            o = get(hOrientation,'val');
             c = get(hContrast,'val');  
             t = numberOfCategories+1; % Not required, computed for completeness
         
-        elseif strcmp(protocolType,'CON') % Contrast will be compared
+        elseif strcmpi(protocolType,'CON') % Contrast will be compared
             numberOfCategories = length(cValsUnique);
             s = get(hSigma,'val');
             f = get(hSpatialFreq,'val');
+            o = get(hOrientation,'val');
             c = numberOfCategories+1; % Not required, computed for completeness 
+            t = get(hTemporalFreq,'val');
+            
+        elseif strcmpi(protocolType,'ORI') % Orientation will be compared
+            numberOfCategories = length(oValsUnique);
+            s = get(hSigma,'val');
+            f = get(hSpatialFreq,'val');
+            o = numberOfCategories+1; % Not required, computed for completeness 
+            c = get(hContrast,'val');
             t = get(hTemporalFreq,'val');
             
         else % Sigma will be compared
             numberOfCategories = length(sValsUnique);
             s = numberOfCategories+1; % Not required, computed for completeness
             f = get(hSpatialFreq,'val');
+            o = get(hOrientation,'val');
             c = get(hContrast,'val'); 
             t = get(hTemporalFreq,'val');
         end
@@ -502,9 +517,9 @@ for i=1:length(expDates)
     
     % parameterCombinations
     [parameterCombinations,aValsUnique,eValsUnique,sValsUnique,...
-    fValsUnique,~,cValsUnique,tValsUnique] = loadParameterCombinations(folderExtract);
+    fValsUnique,oValsUnique,cValsUnique,tValsUnique] = loadParameterCombinations(folderExtract);
 
-    if strcmp(protocolType,'SF')
+    if strcmpi(protocolType,'SF')
         
         for j=1:numberOfCategories
             eyeIndices = inverseMap(intersect(parameterCombinations{a,e,s,j,o,c,t},allUsefulStims));
@@ -523,7 +538,7 @@ for i=1:length(expDates)
         
         comparisonDataValues = fValsUnique;
         
-    elseif strcmp(protocolType,'TF')
+    elseif strcmpi(protocolType,'TF')
         
         for j=1:numberOfCategories
             eyeIndices = inverseMap(intersect(parameterCombinations{a,e,s,f,o,c,j},allUsefulStims));
@@ -542,7 +557,7 @@ for i=1:length(expDates)
         
         comparisonDataValues = tValsUnique;
 
-    elseif strcmp(protocolType,'CON')
+    elseif strcmpi(protocolType,'CON')
         
         for j=1:numberOfCategories
             eyeIndices = inverseMap(intersect(parameterCombinations{a,e,s,f,o,j,t},allUsefulStims));
@@ -560,6 +575,26 @@ for i=1:length(expDates)
         end
         
         comparisonDataValues = cValsUnique;
+    
+    elseif strcmpi(protocolType,'ORI')
+        
+        for j=1:numberOfCategories
+            eyeIndices = inverseMap(intersect(parameterCombinations{a,e,s,f,j,c,t},allUsefulStims));
+            eyeX{j} = cat(1,eyeX{j},eyeDataDegX(eyeIndices,:));
+            eyeY{j} = cat(1,eyeY{j},eyeDataDegY(eyeIndices,:));
+            
+            clear MStmp numMStmp
+            [MStmp,numMStmp] = findMicroSaccades(eyeSpeedMag(eyeIndices,:),cutoff,timeValsEyePos,timeRange);
+            MSData{j} = [MSData{j} MStmp];
+            numMSInRange{j}  = [numMSInRange{j} numMStmp];
+            
+            clear tmpEyeSpeeds
+            tmpEyeSpeeds = eyeSpeedMag(eyeIndices,:);
+            allEyeSpeeds=cat(1,allEyeSpeeds,tmpEyeSpeeds(:));
+        end
+        
+        comparisonDataValues = oValsUnique;
+    
     else
         
         for j=1:numberOfCategories

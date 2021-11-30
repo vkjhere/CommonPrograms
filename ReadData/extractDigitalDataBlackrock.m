@@ -14,7 +14,16 @@ if ~exist('folderDestinationString','var'); folderDestinationString=folderSource
 fileName = [subjectName expDate protocolName '.nev'];
 folderName = fullfile(folderDestinationString,'data',subjectName,gridType,expDate,protocolName);
 makeDirectory(folderName);
+
+% Locate the file. It could be either in data/rawData or just rawData
 folderIn = fullfile(folderSourceString,'data','rawData',subjectName,[subjectName expDate]);
+if ~exist(fullfile(folderIn,fileName),'file')
+    folderIn = fullfile(folderSourceString,'rawData',subjectName,[subjectName expDate]);
+    if ~exist(fullfile(folderIn,fileName),'file')
+        error('Unable to locate rawData');
+    end
+end
+
 folderExtract = fullfile(folderName,'extractedData');
 makeDirectory(folderExtract);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

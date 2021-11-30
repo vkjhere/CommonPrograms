@@ -61,7 +61,12 @@ eLength = length(eValsUnique);
 
 numTimePeriods = length(timeRangeList);
 
-load(fullfile(folderSegment,'badTrials.mat'));
+badTrialsFile = fullfile(folderSegment,'badTrials.mat');
+if exist(badTrialsFile,'file')
+    load(badTrialsFile);
+else
+    badTrials=[];
+end
 
 if strcmp(measure,'LFP')    % Case 1 - LFP analysis
     % Get Time Ranges
