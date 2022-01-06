@@ -104,7 +104,8 @@ if strcmpi(gridType,'EEG')
             10 42 11 43 12 53 23 54 22 55 21;
             00 15 45 14 44 13 52 19 51 20 00;
             00 00 00 46 47 48 49 50 00 00 00;
-            00 00 00  00 16 17 18 00 00 00 00];
+            00 00 00 00 16 17 18 00 00 00 00;
+            00 00 00 00 00 64 00 00 00 00 00];
         
         %  electrodeLabelArray = ...
         %      ['   ' '   ' '   ' 'Fp1' 'GnD' 'Fp2' '   ' '   ' '   '  ;
@@ -115,11 +116,12 @@ if strcmpi(gridType,'EEG')
         %     'TP9' 'TP7' 'CP5' 'CP3' 'CP1' 'CPz' 'CP2' 'CP4' 'CP6' 'TP8' 'TP10';
         %     '   ' 'P7 ' 'P5 ' 'P3 ' 'P1 ' 'Pz ' 'P2 ' 'P4 ' 'P6 ' 'P8 ' '   ';
         %     '   ' '   ' '   ' 'PO7' 'PO3' 'POz' 'PO4' 'PO8' '   ' '   ' '   ';
-        %     '   ' '   ' '   '  '   ' 'O1 ' 'Oz ' 'O2 ' '   ' '   ' '   ' '   '];
+        %     '   ' '   ' '   '  '   ' 'O1 ' 'Oz ' 'O2 ' '   ' '   ' '   ' '   ';
+        %     '   ' '   ' '   '  '   ' '   ' 'Iz ' '   ' '   ' '   ' '   ' '   '];
 
     end
     
-    if electrodeNum<1 || electrodeNum>96
+    if electrodeNum<1 || electrodeNum>max(electrodeArray(:))
         disp('Electrode Number out of range');
         row=1;column=1;
     else
@@ -190,7 +192,7 @@ if strcmpi(gridType,'Microelectrode')
             82 83 84 85 86 87 88 89 90];
     end
     
-    if electrodeNum<1 || electrodeNum>96
+    if electrodeNum<1 || electrodeNum>max(electrodeArray(:))
         disp('Electrode Number out of range');
         row=1;column=1;
     else

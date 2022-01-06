@@ -152,7 +152,7 @@ hTemporalFreq = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Style','popup','String',temporalFreqString,'FontSize',fontSizeSmall);
 
 % Analysis Type
-analysisTypeString = 'ERP|Firing Rate|Raster|FFT|delta FFT|STA';
+analysisTypeString = 'ERP|Firing Rate|Raster|FFT|delta FFT|STA|FFT_ERP|delta FFT_ERP';
 uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-8*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
     'Style','text','String','Analysis Type','FontSize',fontSizeSmall);
@@ -184,6 +184,18 @@ hElevation = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'BackgroundColor', backgroundColor, 'Position',...
     [dynamicTextWidth 1-11.5*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
     'Style','popup','String',elevationString,'FontSize',fontSizeSmall);
+
+% Reference scheme
+referenceChannelStringList = ['None|AvgRef|' analogChannelStringList];
+referenceChannelStringArray = [{'None'} {'AvgRef'} analogChannelStringArray];
+
+uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
+    'Position',[0 1-12.5*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
+    'Style','text','String','Reference','FontSize',fontSizeSmall);
+hReferenceChannel = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
+    'BackgroundColor', backgroundColor, 'Position',...
+    [dynamicTextWidth 1-12.5*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
+    'Style','popup','String',referenceChannelStringList,'FontSize',fontSizeSmall);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% Timing panel %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -407,6 +419,7 @@ hSigmaPlot        = getPlotHandles(1,length(sValsUnique),sigmaGrid,0.002);
         staRange = [str2double(get(hSTAMin,'String')) str2double(get(hSTAMax,'String'))];
         holdOnState = get(hHoldOn,'val');
         removeMeanSTA = get(hRemoveMeanSTA,'val');
+        referenceChannelString = referenceChannelStringArray{get(hReferenceChannel,'val')};
 
         if analysisType==6 % Spike triggered average
             analogChannelPos = get(hAnalogChannel,'val');
@@ -453,17 +466,17 @@ hSigmaPlot        = getPlotHandles(1,length(sValsUnique),sigmaGrid,0.002);
             analogChannelPos = get(hAnalogChannel,'val');
             analogChannelString = analogChannelStringArray{analogChannelPos};
             rfMapVals = plotLFPData1Channel(plotHandles,analogChannelString,s,f,o,c,t,folderLFP,...
-                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice);
+                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString);
             plotLFPData1Parameter1Channel(hTemporalFreqPlot,analogChannelString,a,e,s,f,o,c,[],folderLFP,...
-                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice);
+                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString);
             plotLFPData1Parameter1Channel(hContrastPlot,analogChannelString,a,e,s,f,o,[],t,folderLFP,...
-                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice);
+                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString);
             plotLFPData1Parameter1Channel(hOrientationPlot,analogChannelString,a,e,s,f,[],c,t,folderLFP,...
-                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice);
+                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString);
             plotLFPData1Parameter1Channel(hSpatialFreqPlot,analogChannelString,a,e,s,[],o,c,t,folderLFP,...
-                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice);
+                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString);
             plotLFPData1Parameter1Channel(hSigmaPlot,analogChannelString,a,e,[],f,o,c,t,folderLFP,...
-                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice);
+                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString);
 
             if analogChannelPos<=length(analogChannelsStored)
                 channelNumber = analogChannelsStored(analogChannelPos);
@@ -483,12 +496,12 @@ hSigmaPlot        = getPlotHandles(1,length(sValsUnique),sigmaGrid,0.002);
         if analysisType<=3  % ERP or spikes
             xMin = str2double(get(hStimMin,'String'));
             xMax = str2double(get(hStimMax,'String'));
-        elseif analysisType <=5
-            xMin = str2double(get(hFFTMin,'String'));
-            xMax = str2double(get(hFFTMax,'String'));
-        else
+        elseif analysisType == 6
             xMin = str2double(get(hSTAMin,'String'));
             xMax = str2double(get(hSTAMax,'String'));
+        else
+            xMin = str2double(get(hFFTMin,'String'));
+            xMax = str2double(get(hFFTMax,'String'));
         end
 
         rescaleData(plotHandles,xMin,xMax,getYLims(plotHandles));
@@ -507,6 +520,9 @@ hSigmaPlot        = getPlotHandles(1,length(sValsUnique),sigmaGrid,0.002);
         if analysisType<=3 % ERP or spikes
             xMin = str2double(get(hStimMin,'String'));
             xMax = str2double(get(hStimMax,'String'));
+        elseif analysisType==6
+            xMin = str2double(get(hSTAMin,'String'));
+            xMax = str2double(get(hSTAMax,'String'));
         else
             xMin = str2double(get(hFFTMin,'String'));
             xMax = str2double(get(hFFTMax,'String'));
@@ -605,7 +621,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main function that plots the data
 function rfMapVals = plotLFPData1Channel(plotHandles,channelString,s,f,o,c,t,folderLFP,...
-analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice)
+analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString)
 
 folderExtract = fullfile(folderName,'extractedData');
 folderSegment = fullfile(folderName,'segmentedData');
@@ -615,17 +631,22 @@ titleFontSize = 10;
 [parameterCombinations,aValsUnique,eValsUnique] = loadParameterCombinations(folderExtract,sideChoice);
 [numRows,numCols] = size(plotHandles);
 
-% Get the data
-removeAvgRef = 0;
-if removeAvgRef
-    disp('Removing average reference');
-    load(fullfile(folderLFP,'avgRef.mat'));
-    avgRef = analogData;
-end
-clear signal analogData
-load(fullfile(folderLFP,channelString));
-if removeAvgRef
-    analogData = analogData-avgRef;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Get Signal %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+clear analogData
+x=load(fullfile(folderLFP,channelString));
+analogData=x.analogData;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%% Change Reference %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if strcmpi(referenceChannelString,'None')
+    % Do nothing
+elseif strcmp(referenceChannelString,'AvgRef')
+    disp('Changing to average reference');
+    x = load(fullfile(folderLFP,'AvgRef.mat'));
+    analogData = analogData - x.analogData;
+else
+    disp('Changing to bipolar reference');
+    x = load(fullfile(folderLFP,referenceChannelString));
+    analogData = analogData - x.analogData;
 end
 
 % Get bad trials
@@ -672,7 +693,8 @@ for i=1:numRows
 
             elseif analysisType == 2  ||   analysisType == 3 % compute Firing rates
                 disp('Use plotSpikeData instead of plotLFPData...');
-            else
+                
+            elseif analysisType == 4  ||   analysisType == 5
                 fftBL = abs(fft(analogData(goodPos,blPos),[],2));
                 fftST = abs(fft(analogData(goodPos,stPos),[],2));
 
@@ -685,6 +707,21 @@ for i=1:numRows
 
                 if analysisType == 5
                     plot(plotHandles(i,j),xs,log10(mean(fftST))-log10(mean(fftBL)),'color',plotColor);
+                end
+                
+            elseif analysisType == 7 || analysisType == 8
+                fftERPBL = abs(fft(mean(analogData(goodPos,blPos),1)));
+                fftERPST = abs(fft(mean(analogData(goodPos,stPos),1)));
+                
+                if analysisType == 7
+                    plot(plotHandles(j),xs,log10(fftERPBL),'g');
+                    set(plotHandles(j),'Nextplot','add');
+                    plot(plotHandles(j),xs,log10(fftERPST),'k');
+                    set(plotHandles(j),'Nextplot','replace');
+                end
+                
+                if analysisType == 8
+                    plot(plotHandles(j),xs,log10(fftERPST)-log10(fftERPBL),'color',plotColor);
                 end
             end
             
@@ -716,7 +753,7 @@ end
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function plotLFPData1Parameter1Channel(plotHandles,channelString,a,e,s,f,o,c,t,folderLFP,...
-analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice)
+analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString)
 
 folderExtract = fullfile(folderName,'extractedData');
 folderSegment = fullfile(folderName,'segmentedData');
@@ -731,9 +768,23 @@ freqForComputation = [40 60]; % Hz
     fValsUnique,oValsUnique,cValsUnique,tValsUnique] = loadParameterCombinations(folderExtract,sideChoice);
 [~,numCols] = size(plotHandles);
 
-% Get the data
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Get data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear signal analogData
-load(fullfile(folderLFP,channelString));
+x=load(fullfile(folderLFP,channelString));
+analogData=x.analogData;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%% Change Reference %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if strcmpi(referenceChannelString,'None')
+    % Do nothing
+elseif strcmp(referenceChannelString,'AvgRef')
+    disp('Changing to average reference');
+    x = load(fullfile(folderLFP,'AvgRef.mat'));
+    analogData = analogData - x.analogData;
+else
+    disp('Changing to bipolar reference');
+    x = load(fullfile(folderLFP,referenceChannelString));
+    analogData = analogData - x.analogData;
+end
 
 % Get bad trials
 badTrialFile = fullfile(folderSegment,'badTrials.mat');
@@ -859,6 +910,8 @@ for j=1:numCols
         if analysisType == 1        % compute ERP
             clear erp
             erp = mean(analogData(goodPos,:),1);
+            erp = erp - mean(erp(blPos));
+            
             plot(plotHandles(j),timeVals,erp,'color',plotColor);
             
             if isempty(o) % Orientation tuning
@@ -867,7 +920,8 @@ for j=1:numCols
 
         elseif analysisType == 2 || analysisType == 3   % compute Firing rates
             disp('Use plotSpikeData instead of plotLFPData...');
-        else
+            
+        elseif analysisType == 4 || analysisType == 5
             fftBL = abs(fft(analogData(goodPos,blPos),[],2));
             fftST = abs(fft(analogData(goodPos,stPos),[],2));
 
@@ -884,6 +938,25 @@ for j=1:numCols
             
             if isempty(o) % Orientation tuning
                 computationVals(j) = max(mean(fftST(:,freqComputation),1));
+            end
+            
+        elseif analysisType == 7 || analysisType == 8
+            fftERPBL = abs(fft(mean(analogData(goodPos,blPos),1)));
+            fftERPST = abs(fft(mean(analogData(goodPos,stPos),1)));
+
+            if analysisType == 7
+                plot(plotHandles(j),xs,log10(fftERPBL),'g');
+                set(plotHandles(j),'Nextplot','add');
+                plot(plotHandles(j),xs,log10(fftERPST),'k');
+                set(plotHandles(j),'Nextplot','replace');
+            end
+
+            if analysisType == 8
+                plot(plotHandles(j),xs,log10(fftERPST)-log10(fftERPBL),'color',plotColor);
+            end
+            
+            if isempty(o) % Orientation tuning
+                computationVals(j) = max(mean(fftERPST(freqComputation)),1);
             end
         end
 
@@ -920,8 +993,9 @@ folderSegment = fullfile(folderName,'segmentedData');
 [numRows,numCols] = size(plotHandles);
 
 % Get the data
-clear signal spikeData
-load(fullfile(folderSpikes,['elec' num2str(channelNumber) '_SID' num2str(unitID) '.mat']));
+clear spikeData
+x=load(fullfile(folderSpikes,['elec' num2str(channelNumber) '_SID' num2str(unitID) '.mat']));
+spikeData=x.spikeData;
 
 % Get bad trials
 badTrialFile = fullfile(folderSegment,'badTrials.mat');
@@ -990,8 +1064,9 @@ folderSegment = fullfile(folderName,'segmentedData');
 [~,numCols] = size(plotHandles);
 
 % Get the data
-clear signal spikeData
-load(fullfile(folderSpikes,['elec' num2str(channelNumber) '_SID' num2str(unitID) '.mat']));
+clear spikeData
+x=load(fullfile(folderSpikes,['elec' num2str(channelNumber) '_SID' num2str(unitID) '.mat']));
+spikeData=x.spikeData;
 
 % Get bad trials
 badTrialFile = fullfile(folderSegment,'badTrials.mat');
@@ -1131,12 +1206,14 @@ folderSegment = fullfile(folderName,'segmentedData');
 [numRows,numCols] = size(plotHandles);
 
 % Get the analog data
-clear signal analogData
-load(fullfile(folderLFP,analogChannelString));
+clear analogData
+x=load(fullfile(folderLFP,analogChannelString));
+analogData=x.analogData;
 
 % Get the spike data
-clear signal spikeData
-load(fullfile(folderSpikes,['elec' num2str(spikeChannelNumber) '_SID' num2str(unitID) '.mat']));
+clear spikeData
+x=load(fullfile(folderSpikes,['elec' num2str(spikeChannelNumber) '_SID' num2str(unitID) '.mat']));
+spikeData=x.spikeData;
 
 % Get bad trials
 badTrialFile = fullfile(folderSegment,'badTrials.mat');
@@ -1343,18 +1420,23 @@ end
 %%%%%%%%%%%%c%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % load Data
 function [analogChannelsStored,timeVals,goodStimPos,analogInputNums] = loadlfpInfo(folderLFP) %#ok<*STOUT>
-load(fullfile(folderLFP,'lfpInfo.mat'));
-analogChannelsStored=sort(analogChannelsStored);
-if ~exist('analogInputNums','var')
+x=load(fullfile(folderLFP,'lfpInfo.mat'));
+analogChannelsStored=x.analogChannelsStored;
+goodStimPos=x.goodStimPos;
+timeVals=x.timeVals;
+
+if isfield(x,'analogInputNums')
+    analogInputNums=x.analogInputNums;
+else
     analogInputNums=[];
 end
 end
 function [neuralChannelsStored,SourceUnitID] = loadspikeInfo(folderSpikes)
 fileName = fullfile(folderSpikes,'spikeInfo.mat');
 if exist(fileName,'file')
-    load(fileName);
-    [neuralChannelsStored,I]=sort(neuralChannelsStored);
-    SourceUnitID=SourceUnitID(I);
+    x=load(fileName);
+    neuralChannelsStored=x.neuralChannelsStored;
+    SourceUnitID=x.SourceUnitID;
 else
     neuralChannelsStored=[];
     SourceUnitID=[];
@@ -1366,12 +1448,30 @@ function [parameterCombinations,aValsUnique,eValsUnique,sValsUnique,...
 p = load(fullfile(folderExtract,'parameterCombinations.mat'));
 
 if ~isfield(p,'parameterCombinations2') % Not a plaid stimulus
-    load(fullfile(folderExtract,'parameterCombinations.mat'));
+    parameterCombinations=p.parameterCombinations;
+    aValsUnique=p.aValsUnique;
+    eValsUnique=p.eValsUnique;
     
-    if ~exist('sValsUnique','var');    sValsUnique=rValsUnique;             end
-    if ~exist('cValsUnique','var');    cValsUnique=100;                     end
-    if ~exist('tValsUnique','var');    tValsUnique=0;                       end
+    if ~isfield(p,'sValsUnique')
+        sValsUnique = p.rValsUnique/3;
+    else
+        sValsUnique=p.sValsUnique;
+    end
     
+    fValsUnique=p.fValsUnique;
+    oValsUnique=p.oValsUnique;
+    
+    if ~isfield(p,'cValsUnique')
+        cValsUnique=100;
+    else
+        cValsUnique=p.cValsUnique;
+    end
+    
+    if ~isfield(p,'tValsUnique')
+        tValsUnique=0;
+    else
+        tValsUnique=p.tValsUnique;
+    end 
 else
     [parameterCombinations,aValsUnique,eValsUnique,sValsUnique,...
         fValsUnique,oValsUnique,cValsUnique,tValsUnique] = makeCombinedParameterCombinations(folderExtract,sideChoice);
@@ -1379,21 +1479,22 @@ end
 
 end
 function badTrials = loadBadTrials(badTrialFile)
-load(badTrialFile);
+x=load(badTrialFile);
+badTrials=x.badTrials;
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [aziCenter,eleCenter] = getRFcenterSimple(aValsUnique,eValsUnique,rfMapValues)
-
-rfMapValues = rfMapValues-mean(mean(rfMapValues));
-% Compute the mean and variance
-[maxEnonUnique,maxAnonUnique] = (find(rfMapValues==max(max(rfMapValues))));
-maxE = maxEnonUnique(ceil(length(maxEnonUnique)/2));
-maxA = maxAnonUnique(ceil(length(maxAnonUnique)/2));
-
-%[maxE maxA]
-aziCenter = sum(rfMapValues(maxE,:).*aValsUnique)/sum(rfMapValues(maxE,:));
-eleCenter = sum(rfMapValues(:,maxA)'.*eValsUnique)/sum(rfMapValues(:,maxA));
-end
+% function [aziCenter,eleCenter] = getRFcenterSimple(aValsUnique,eValsUnique,rfMapValues)
+% 
+% rfMapValues = rfMapValues-mean(mean(rfMapValues));
+% % Compute the mean and variance
+% [maxEnonUnique,maxAnonUnique] = (find(rfMapValues==max(max(rfMapValues))));
+% maxE = maxEnonUnique(ceil(length(maxEnonUnique)/2));
+% maxA = maxAnonUnique(ceil(length(maxAnonUnique)/2));
+% 
+% %[maxE maxA]
+% aziCenter = sum(rfMapValues(maxE,:).*aValsUnique)/sum(rfMapValues(maxE,:));
+% eleCenter = sum(rfMapValues(:,maxA)'.*eValsUnique)/sum(rfMapValues(:,maxA));
+% end
 function [prefOrientation,orientationSelectivity] = getOrientationTuning(computationVals,oValsUnique)
 num=0;
 den=0;
