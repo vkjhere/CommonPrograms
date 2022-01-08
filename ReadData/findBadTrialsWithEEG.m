@@ -262,14 +262,19 @@ eyeDataFile1 = fullfile(folderName,'extractedData','EyeData.mat');
 eyeDataFile2 = fullfile(folderName,'segmentedData','eyeData','eyeDataDeg.mat');
 
 if isfile(eyeDataFile1) && isfile(eyeDataFile2)
-    FsEye = 500;
+    eyeRangeMS = load(eyeDataFile1);
+    if isfield(eyeRangeMS,'FsEye')
+        FsEye = eyeRangeMS.FsEye;
+    else
+        FsEye = 500;
+    end
 else
     FsEye = [];
 end
 
 if ~isempty(FsEye)
-    eyeRangeMS = load(eyeDataFile1);
-    eyeRangeMS = eyeRangeMS.eyeRangeMS;
+%     eyeRangeMS = load(eyeDataFile1);
+    eyeRangeMS = eyeRangeMS.eyeRangeMS; 
     eyeData = load(eyeDataFile2);
     
     eyeDataDegX = eyeData.eyeDataDegX;
