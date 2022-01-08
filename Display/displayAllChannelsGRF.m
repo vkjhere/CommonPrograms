@@ -14,7 +14,7 @@ folderLFP = fullfile(folderSegment,'LFP');
 folderSpikes = fullfile(folderSegment,'Spikes');
 
 % load LFP Information
-[analogChannelsStored,~,timeVals] = loadlfpInfo(folderLFP);
+[analogChannelsStored,~,timeVals,analogInputNums] = loadlfpInfo(folderLFP);
 [neuralChannelsStored,SourceUnitID] = loadspikeInfo(folderSpikes);
 
 % Get Combinations
@@ -42,10 +42,10 @@ backgroundColor = 'w';
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %staticTitle = [subjectName '_' expDate '_' protocolName];
-% if 0 % don't plot the static panel 
+% if 0 % don't plot the static panel
 % hStaticPanel = uipanel('Title','Information','fontSize', fontSizeLarge, ...
 %     'Unit','Normalized','Position',[staticStartPos panelStartHeight staticPanelWidth panelHeight]);
-% 
+%
 % staticText = [{ '   '};
 %     {['Monkey Name: ' subjectName]}; ...
 %     {['Date: ' expDate]}; ...
@@ -58,7 +58,7 @@ backgroundColor = 'w';
 %     {['Sigma        (Deg): ' num2str(stimResults.sigma)]}; ...
 %     {['Radius       (Deg): ' num2str(stimResults.radius)]}; ...
 %     ];
-% 
+%
 % tStaticText = uicontrol('Parent',hStaticPanel,'Unit','Normalized', ...
 %     'Position',[0 0 1 1], 'Style','text','String',staticText,'FontSize',fontSizeSmall);
 % end
@@ -66,7 +66,7 @@ backgroundColor = 'w';
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% Dynamic panel %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-dynamicHeight = 0.06; dynamicGap=0.015; dynamicTextWidth = 0.6;
+dynamicHeight = 0.085; dynamicGap=0.02; dynamicTextWidth = 0.6;
 hDynamicPanel = uipanel('Title','Parameters','fontSize', fontSizeLarge, ...
     'Unit','Normalized','Position',[dynamicStartPos panelStartHeight dynamicPanelWidth panelHeight]);
 
@@ -145,7 +145,7 @@ if ~isempty(tValsUnique)
 end
 
 % Analysis Type
-analysisTypeString = 'ERP|Firing Rate|FFT|delta FFT';
+analysisTypeString = 'ERP|Firing Rate|FFT|delta FFT|FFT_ERP| delta FFT_ERP';
 uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-8*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
     'Style','text','String','Analysis Type','FontSize',fontSizeSmall);
@@ -153,6 +153,19 @@ hAnalysisType = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'BackgroundColor', backgroundColor, 'Position', ...
     [dynamicTextWidth 1-8*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
     'Style','popup','String',analysisTypeString,'FontSize',fontSizeSmall);
+
+% Reference scheme
+[analogChannelStringList,analogChannelStringArray] = getAnalogStringFromValues(analogChannelsStored,analogInputNums);
+referenceChannelStringList = ['None|AvgRef|' analogChannelStringList];
+referenceChannelStringArray = [{'None'} {'AvgRef'} analogChannelStringArray];
+
+uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
+    'Position',[0 1-9*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
+    'Style','text','String','Reference','FontSize',fontSizeSmall);
+hReferenceChannel = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
+    'BackgroundColor', backgroundColor, 'Position',...
+    [dynamicTextWidth 1-9*(dynamicHeight+dynamicGap) 1-dynamicTextWidth dynamicHeight], ...
+    'Style','popup','String',referenceChannelStringList,'FontSize',fontSizeSmall);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% Timing panel %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -303,9 +316,9 @@ else
     badChannels=[];
     highImpChannels=[];
 end
-     
+
 hElectrodes = showElectrodeLocations(electrodeGridPos,highImpChannels,'m',[],0,0,gridType,subjectName,gridLayout);
-              showElectrodeLocations(electrodeGridPos,badChannels,'r',[],1,0,gridType,subjectName,gridLayout);
+showElectrodeLocations(electrodeGridPos,badChannels,'r',[],1,0,gridType,subjectName,gridLayout);
 
 % Get main plot and message handles
 [~,~,electrodeArray] = electrodePositionOnGrid(1,gridType,subjectName,gridLayout);
@@ -315,6 +328,9 @@ plotHandles = getPlotHandles(numRows,numCols);
 hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
     'Style','text','String',[subjectName expDate protocolName],'FontSize',fontSizeLarge);
 
+% Remove non EEG channels
+analogChannelsStored = intersect(analogChannelsStored,unique(electrodeArray));
+neuralChannelsStored = intersect(neuralChannelsStored,unique(electrodeArray));
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % functions
     function plotData_Callback(~,~)
@@ -336,11 +352,12 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
         end
         
         analysisType = get(hAnalysisType,'val');
+        referenceChannelString = referenceChannelStringArray{get(hReferenceChannel,'val')};
         plotColor = colorNames(get(hChooseColor,'val'));
-
+        
         blRange = [str2double(get(hBaselineMin,'String')) str2double(get(hBaselineMax,'String'))];
         stRange = [str2double(get(hStimPeriodMin,'String')) str2double(get(hStimPeriodMax,'String'))];
-
+        
         set(hMessage,'String',[num2str(length(goodPos)) ' stimuli found' ]);
         
         if ~isempty(goodPos)
@@ -355,11 +372,11 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
                 disp(['inhibited : ' num2str(inhibitedElectrodes)]);
                 showElectrodeLocations(electrodeGridPos,responsiveElectrodes,'b',hElectrodes,1,0,gridType,subjectName,gridLayout);
                 showElectrodeLocations(electrodeGridPos,inhibitedElectrodes,'g',hElectrodes,1,0,gridType,subjectName,gridLayout);
-            
+                
             else
                 channelsStored = analogChannelsStored;
                 plotLFPData(plotHandles,channelsStored,goodPos,folderLFP,...
-                analysisType,timeVals,plotColor,blRange,stRange,gridType,subjectName,gridLayout);
+                    analysisType,timeVals,plotColor,blRange,stRange,gridType,subjectName,gridLayout,referenceChannelString);
             end
             
             if analysisType<=2 % ERP or spikes
@@ -375,9 +392,9 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
     end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function rescaleY_Callback(~,~)
-
+        
         analysisType = get(hAnalysisType,'val');
-
+        
         if analysisType == 2
             channelsStored = neuralChannelsStored;
         else
@@ -389,16 +406,16 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
         else
             xRange = [str2double(get(hFFTMin,'String')) str2double(get(hFFTMax,'String'))];
         end
-
+        
         yRange = [str2double(get(hYMin,'String')) str2double(get(hYMax,'String'))];
         rescaleData(plotHandles,channelsStored,[xRange yRange],gridType,subjectName,gridLayout);
-
+        
     end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function rescaleData_Callback(~,~)
-
+        
         analysisType = get(hAnalysisType,'val');
-
+        
         if analysisType == 2
             channelsStored = neuralChannelsStored;
         else
@@ -410,16 +427,16 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
         else
             xRange = [str2double(get(hFFTMin,'String')) str2double(get(hFFTMax,'String'))];
         end
-
+        
         yRange = getYLims(plotHandles,channelsStored,gridType,subjectName,gridLayout);
         rescaleData(plotHandles,channelsStored,[xRange yRange],gridType,subjectName,gridLayout);
     end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function holdOn_Callback(source,~)
         holdOnState = get(source,'Value');
-
+        
         [numRow,numCol] = size(plotHandles);
-
+        
         if holdOnState
             for i=1:numRow
                 for j=1:numCol
@@ -442,7 +459,7 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
                 cla(plotHandles(i,j));
             end
         end
-
+        
     end
 end
 
@@ -450,69 +467,92 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main function that plots the data
 function plotLFPData(plotHandles, channelsStored, goodPos, ...
-    folderData, analysisType, timeVals, plotColor,blRange,stRange,gridType,subjectName,gridLayout)
+    folderData, analysisType, timeVals, plotColor,blRange,stRange,gridType,subjectName,gridLayout,referenceChannelString)
 
 if isempty(goodPos)
     disp('No entries for this combination..')
 else
     
-    removeAvgRef = 0;
+    Fs = round(1/(timeVals(2)-timeVals(1)));
+    blPos = find(timeVals>=blRange(1),1)+ (1:diff(blRange)*Fs);
+    stPos = find(timeVals>=stRange(1),1)+ (1:diff(stRange)*Fs);
     
-    if removeAvgRef
-        disp('Removing average reference'); %#ok<*UNRCH>
-        load([folderData 'avgRef']);
-        avgRef = analogData;
-    end
+    xsBL = 0:1/(diff(blRange)):Fs-1/(diff(blRange));
+    xsST = 0:1/(diff(stRange)):Fs-1/(diff(stRange));
     
-    if analysisType>2 % FFT
-        Fs = round(1/(timeVals(2)-timeVals(1)));
-        blPos = find(timeVals>=blRange(1),1)+ (1:diff(blRange)*Fs);
-        stPos = find(timeVals>=stRange(1),1)+ (1:diff(stRange)*Fs);
-
-        xsBL = 0:1/(diff(blRange)):Fs-1/(diff(blRange));
-        xsST = 0:1/(diff(stRange)):Fs-1/(diff(stRange));
-    end
-
     for i=1:length(channelsStored)
         
         channelNum = channelsStored(i);
         disp(['Plotting electrode ' num2str(channelNum)]);
-
+        
         % get position
         [row,column] = electrodePositionOnGrid(channelNum,gridType,subjectName,gridLayout);
-
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Get Signal %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        clear analogData
+        x = load(fullfile(folderData,['elec' num2str(channelNum)]));
+        analogData = x.analogData;
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%% Change Reference %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        if strcmpi(referenceChannelString,'None')
+            % Do nothing
+        elseif strcmp(referenceChannelString,'AvgRef')
+            disp('Changing to average reference');
+            x = load(fullfile(folderData,'AvgRef.mat'));
+            analogData = analogData - x.analogData;
+        else
+            disp(['Changing reference to ' referenceChannelString]);
+            x = load(fullfile(folderData,referenceChannelString));
+            analogData = analogData - x.analogData;
+        end
+        
         if analysisType == 1        % compute ERP
-            clear signal analogData
-            load(fullfile(folderData ,['elec' num2str(channelNum)]));
-            if removeAvgRef
-                analogData = analogData-avgRef;
-            end
+            
             erp = mean(analogData(goodPos,:),1); %#ok<*NODEF>
-
+            erp = erp - mean(erp(blPos));
+            
             %Plot
             plot(plotHandles(row,column),timeVals,erp,'color',plotColor);
-
+            
         elseif analysisType == 2    % compute Firing rates
             disp('Use plotSpikeData instead of plotLFPData...');
-        else
-            clear signal analogData
-            load(fullfile(folderData,['elec' num2str(channelNum)]));
-            if removeAvgRef
-                analogData = analogData-avgRef;
-            end
-            fftBL = abs(fft(analogData(goodPos,blPos),[],2)); 
+            
+        elseif (analysisType == 3) || (analysisType == 4)
+            
+            fftBL = abs(fft(analogData(goodPos,blPos),[],2));
             fftST = abs(fft(analogData(goodPos,stPos),[],2));
-
+            
             if analysisType == 3
                 plot(plotHandles(row,column),xsBL,log10(mean(fftBL)),'g');
                 set(plotHandles(row,column),'Nextplot','add');
                 plot(plotHandles(row,column),xsST,log10(mean(fftST)),'k');
                 set(plotHandles(row,column),'Nextplot','replace');
-            end
-
-            if analysisType == 4
+            else
                 if xsBL == xsST %#ok<*BDSCI>
                     plot(plotHandles(row,column),xsBL,log10(mean(fftST))-log10(mean(fftBL)),'color',plotColor);
+                    set(plotHandles(row,column),'Nextplot','add');
+                    plot(plotHandles(row,column),xsBL,zeros(1,length(xsBL)),'color','k');
+                    set(plotHandles(row,column),'Nextplot','replace');
+                else
+                    disp('Choose same baseline and stimulus periods..');
+                end
+            end
+            
+        elseif (analysisType == 5) || (analysisType == 6)
+            
+            erp = mean(analogData(goodPos,:),1); %#ok<*NODEF>
+            
+            fftERPBL = abs(fft(erp(blPos)));
+            fftERPST = abs(fft(erp(stPos)));
+            
+            if (analysisType == 5)
+                plot(plotHandles(row,column),xsBL,log10(fftERPBL),'g');
+                set(plotHandles(row,column),'Nextplot','add');
+                plot(plotHandles(row,column),xsST,log10(fftERPST),'k');
+                set(plotHandles(row,column),'Nextplot','replace');
+            else
+                if xsBL == xsST %#ok<*BDSCI>
+                    plot(plotHandles(row,column),xsBL,log10(fftERPST)-log10(fftERPBL),'color',plotColor);
                     set(plotHandles(row,column),'Nextplot','add');
                     plot(plotHandles(row,column),xsBL,zeros(1,length(xsBL)),'color','k');
                     set(plotHandles(row,column),'Nextplot','replace');
@@ -541,12 +581,13 @@ else
     for i=1:length(channelsStored)
         channelNum = channelsStored(i);
         disp(channelNum)
-
+        
         % get position
         [row,column] = electrodePositionOnGrid(channelNum,gridType,subjectName);
-
-        clear neuralInfo spikeData
-        load(fullfile(folderData,['elec' num2str(channelNum) '_SID' num2str(SourceUnitID(i))]));
+        
+        clear spikeData
+        x = load(fullfile(folderData,['elec' num2str(channelNum) '_SID' num2str(SourceUnitID(i))]));
+        spikeData = x.spikeData;
         [psthVals,xs] = getPSTH(spikeData(goodPos),binWidthMS,[timeVals(1) timeVals(end)]);
         
         % Compute the mean firing rates
@@ -577,7 +618,7 @@ else
         
     end
 end
-end   
+end
 
 function yRange = getYLims(plotHandles,channelsStored,gridType,subjectName,gridLayout)
 
@@ -609,7 +650,7 @@ for i=1:length(channelsStored)
     channelNum = channelsStored(i);
     
     % get position
-   [row,column] = electrodePositionOnGrid(channelNum,gridType,subjectName,gridLayout);
+    [row,column] = electrodePositionOnGrid(channelNum,gridType,subjectName,gridLayout);
     
     axis(plotHandles(row,column),axisLims);
     if (row==numRows && rem(column,2)==rem(numCols+1,2))
@@ -630,6 +671,22 @@ set(plotHandles(numRows,1),'XTickLabel',[],'YTickLabel',[]);
 set(plotHandles(numRows,numCols),'XTickLabel',[],'YTickLabel',[]);
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [outString,outArray] = getAnalogStringFromValues(analogChannelsStored,analogInputNums)
+outString='';
+count=1;
+for i=1:length(analogChannelsStored)
+    outArray{count} = ['elec' num2str(analogChannelsStored(i))]; %#ok<AGROW>
+    outString = cat(2,outString,[outArray{count} '|']);
+    count=count+1;
+end
+if ~isempty(analogInputNums)
+    for i=1:length(analogInputNums)
+        outArray{count} = ['ainp' num2str(analogInputNums(i))];
+        outString = cat(2,outString,[outArray{count} '|']);
+        count=count+1;
+    end
+end
+end
 function outString = getStringFromValues(valsUnique,decimationFactor)
 
 if length(valsUnique)==1
@@ -659,15 +716,23 @@ end
 %%%%%%%%%%%%c%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % load Data
 function [analogChannelsStored,goodStimPos,timeVals,analogInputNums] = loadlfpInfo(folderLFP) %#ok<*STOUT>
-load(fullfile(folderLFP,'lfpInfo.mat'));
-if ~exist('analogInputNums','var')
+x=load(fullfile(folderLFP,'lfpInfo.mat'));
+analogChannelsStored=x.analogChannelsStored;
+goodStimPos=x.goodStimPos;
+timeVals=x.timeVals;
+
+if isfield(x,'analogInputNums')
+    analogInputNums=x.analogInputNums;
+else
     analogInputNums=[];
 end
 end
 function [neuralChannelsStored,SourceUnitID] = loadspikeInfo(folderSpikes)
 fileName = fullfile(folderSpikes,'spikeInfo.mat');
 if exist(fileName,'file')
-    load(fileName);
+    x=load(fileName);
+    neuralChannelsStored=x.neuralChannelsStored;
+    SourceUnitID=x.SourceUnitID;
 else
     neuralChannelsStored=[];
     SourceUnitID=[];
@@ -676,15 +741,36 @@ end
 function [parameterCombinations,aValsUnique,eValsUnique,sValsUnique,...
     fValsUnique,oValsUnique,cValsUnique,tValsUnique] = loadParameterCombinations(folderExtract)
 
-load(fullfile(folderExtract,'parameterCombinations.mat'));
+x=load(fullfile(folderExtract,'parameterCombinations.mat'));
+parameterCombinations=x.parameterCombinations;
+aValsUnique=x.aValsUnique;
+eValsUnique=x.eValsUnique;
 
-if ~exist('sValsUnique','var');    sValsUnique = rValsUnique/3;         end
-if ~exist('cValsUnique','var');    cValsUnique=[];                      end
-if ~exist('tValsUnique','var');    tValsUnique=[];                      end
+if ~isfield(x,'sValsUnique')
+    sValsUnique = x.rValsUnique/3;         
+else
+    sValsUnique=x.sValsUnique;
+end
+
+fValsUnique=x.fValsUnique;
+oValsUnique=x.oValsUnique;
+
+if ~isfield(x,'cValsUnique')
+    cValsUnique=[];
+else
+    cValsUnique=x.cValsUnique;
+end
+
+if ~isfield(x,'tValsUnique')
+    tValsUnique=[];
+else
+    tValsUnique=x.tValsUnique;
+end
 end
 % function stimResults = loadStimResults(folderExtract)
 % load ([folderExtract 'stimResults']);
 % end
 function impedanceValues = getImpedanceValues(fileName)
-load(fileName);
+x=load(fileName);
+impedanceValues = x.impedanceValues;
 end
