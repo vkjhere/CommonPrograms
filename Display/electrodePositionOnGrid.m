@@ -1,4 +1,4 @@
-function [row,column,electrodeArray] = electrodePositionOnGrid(electrodeNum,gridType,subjectName,gridLayout)
+function [row,column,electrodeArray,electrodeGroupList,groupNameList] = electrodePositionOnGrid(electrodeNum,gridType,subjectName,gridLayout)
 
 if ~exist('subjectName','var');         subjectName=[];                 end
 if ~exist('gridLayout','var');          gridLayout=2;                   end
@@ -40,6 +40,8 @@ if strcmpi(gridType,'EEG')
             00 23 56 24 57 25 58 26 59 27 00;
             28 60 00 61 00 62 00 63 00 64 32;
             00 00 00 29 00 30 00 31 00 00 00];
+        
+        electrodeGroupList{1} = [24 26 29 30 31 57 58 61 62 63];    groupNameList{1} = 'Occipital'; % Occipital
         
     elseif gridLayout == 3 % 10-20 system
         electrodeArray = ...
@@ -118,7 +120,14 @@ if strcmpi(gridType,'EEG')
         %     '   ' '   ' '   ' 'PO7' 'PO3' 'POz' 'PO4' 'PO8' '   ' '   ' '   ';
         %     '   ' '   ' '   '  '   ' 'O1 ' 'Oz ' 'O2 ' '   ' '   ' '   ' '   ';
         %     '   ' '   ' '   '  '   ' '   ' 'Iz ' '   ' '   ' '   ' '   ' '   '];
-
+        
+        % Separate electrode groups corresponding to different brain
+        % regions
+        electrodeGroupList{1} = [16:18    (32+[14:18 32])];             groupNameList{1} = 'Occipital'; % Occipital
+        electrodeGroupList{2} = [11:15 19:20 22:23 (32+[11:13 19:22])]; groupNameList{2} = 'Centro-Parietal'; % Centro-Parietal
+        electrodeGroupList{3} = [6:8 24:25 28:29   (32+[7:9 24:26])];   groupNameList{3} = 'Fronto-Central'; % Fronto-Central
+        electrodeGroupList{4} = [1:4 30:32 (32+[1:5 28:31])];           groupNameList{4} = 'Frontal'; % Frontal
+        electrodeGroupList{5} = [5 9:10 21 26:27 (32+[6 10 23 27])];    groupNameList{5} = 'Temporal'; % Temporal        
     end
     
     if electrodeNum<1 || electrodeNum>max(electrodeArray(:))
