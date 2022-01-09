@@ -9,20 +9,22 @@
 % nonEEGElectrodes are other analog electrodes that are not considered for bad trial analysis
 % capType: Name of the montage. Set to empty for LFP data
 
-function [badTrials,allBadTrials,badTrialsUnique,badElecs,totalTrials,slopeValsVsFreq] = findBadTrialsWithEEG(subjectName,expDate,protocolName,folderSourceString,gridType,badEEGElectrodes,nonEEGElectrodes,impedanceTag,capType,electrodeGroup,checkPeriod,checkBaselinePeriod,useEyeData,saveDataFlag,badTrialNameStr,displayResultsFlag)
+function [badTrials,allBadTrials,badTrialsUnique,badElecs,totalTrials,slopeValsVsFreq] = ...
+    findBadTrialsWithEEG(subjectName,expDate,protocolName,folderSourceString,gridType,badEEGElectrodes,...
+    nonEEGElectrodes,impedanceTag,capType,saveDataFlag,badTrialNameStr,displayResultsFlag,electrodeGroup,checkPeriod,checkBaselinePeriod,useEyeData)
 
 if ~exist('gridType','var');        gridType = 'EEG';                   end
 if ~exist('badEEGElectrodes','var');  badEEGElectrodes = [];            end
 if ~exist('nonEEGElectrodes','var');  nonEEGElectrodes = [65 66];       end
 if ~exist('impedanceTag','var');    impedanceTag = 'ImpedanceStart';    end
 if ~exist('capType','var');         capType = 'actiCap64';              end
-if ~exist('electrodeGroup','var');  electrodeGroup='Occipital';         end
-if ~exist('checkPeriod','var');     checkPeriod = [-0.500 0.750];       end % s
-if ~exist('checkBaselinePeriod','var'); checkBaselinePeriod = [-0.5 0]; end % For computing slopes for artifact rejection
-if ~exist('useEyeData','var');      useEyeData = 1;                     end
 if ~exist('saveDataFlag','var');    saveDataFlag = 1;                   end
 if ~exist('badTrialNameStr','var'); badTrialNameStr = '_v5';            end
 if ~exist('displayResultsFlag','var'); displayResultsFlag=0;            end
+if ~exist('electrodeGroup','var');  electrodeGroup='';                  end
+if ~exist('checkPeriod','var');     checkPeriod = [-0.50 0.75];         end % s
+if ~exist('checkBaselinePeriod','var'); checkBaselinePeriod = [-0.5 0]; end % For computing slopes for artifact rejection
+if ~exist('useEyeData','var');      useEyeData = 1;                     end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Initializations %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 highPassCutOff = 1.6; % Hz
@@ -63,7 +65,7 @@ if ~isempty(capType)
     if ~isequal(eegElectrodeLabels(:),montageLabels(:))
         error('Montage labels do not match with channel labels');
     else
-        highPriorityElectrodeList = getHighPriorityElectrodes(capType,gridType,electrodeGroup);
+        highPriorityElectrodeList = getHighPriorityElectrodes(capType,electrodeGroup);
     end
 else
     highPriorityElectrodeList = [];
@@ -82,16 +84,17 @@ params.fpass    = [0 200];
 params.trialave = 0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%% Bad Trial Analysis %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-originalTrialInds = 1:size(eegData,2);
 totalTrials = size(eegData,2);
+originalTrialInds = 1:totalTrials;
 
 % 1. Get bad trials from eye data
 if useEyeData
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Get Eye data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     [eyeDataDeg,eyeRangeMS,FsEye] = getEyeData(folderName);
-    if exist('FsEye','var') && ~isempty(FsEye)
+    if ~isempty(FsEye)
         badEyeTrials = findBadTrialsFromEyeData_v2(eyeDataDeg,eyeRangeMS,FsEye,checkPeriod)'; % added by MD 10-09-2017; Modified by MD 03-09-2019
     else
+        disp('Eye data not found');
         badEyeTrials = [];
     end
     originalTrialInds(badEyeTrials) = [];

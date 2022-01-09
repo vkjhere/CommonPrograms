@@ -1,7 +1,35 @@
-function [row,column,electrodeArray,electrodeGroupList,groupNameList] = electrodePositionOnGrid(electrodeNum,gridType,subjectName,gridLayout)
+% gridLayout is either a number or a string, which specifies the type of
+% montage.
+% 1 for 'easyCap64'
+% 2 for 'actiCap64'
+% 3 for '10-20'
+% 4 for 'monkeyEEG1-11' - only EEG recording in monkey with electrodes 1 to 11
+% 5 for monkeyEEG97-107 - monkey EEG with electrodes 97-107 along with LFP recordings
+% 6 for 'actiCap64_2019' - New ActiCaps bought in 2019
+% 7 for 'actiCap31Posterior'
+
+function [row,column,electrodeArray,electrodeGroupList,groupNameList,highPriorityElectrodeNums] = electrodePositionOnGrid(electrodeNum,gridType,subjectName,gridLayout)
 
 if ~exist('subjectName','var');         subjectName=[];                 end
 if ~exist('gridLayout','var');          gridLayout=2;                   end
+
+if ischar(gridLayout)
+    if strcmpi(gridLayout,'easyCap64')
+        gridLayout=1;
+    elseif strcmpi(gridLayout,'actiCap64')
+        gridLayout=2;
+    elseif strcmpi(gridLayout,'10-20')
+        gridLayout=3;
+    elseif strcmpi(gridLayout,'monkeyEEG1-11')
+        gridLayout=4;
+    elseif strcmpi(gridLayout,'monkeyEEG97-107')
+        gridLayout=5;
+    elseif strcmpi(gridLayout,'actiCap64_2019')
+        gridLayout=6;
+    elseif strcmpi(gridLayout,'actiCap31Posterior')
+        gridLayout=7;    
+    end
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% EEG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if strcmpi(gridType,'EEG')
@@ -41,7 +69,13 @@ if strcmpi(gridType,'EEG')
             28 60 00 61 00 62 00 63 00 64 32;
             00 00 00 29 00 30 00 31 00 00 00];
         
-        electrodeGroupList{1} = [24 26 29 30 31 57 58 61 62 63];    groupNameList{1} = 'Occipital'; % Occipital
+        electrodeGroupList{1} = [28:32    (32+ (28:32))];               groupNameList{1} = 'Occipital'; % Occipital
+        electrodeGroupList{2} = [18:21 23:27 (32+[20:22 24:27])];       groupNameList{2} = 'Centro-Parietal'; % Centro-Parietal
+        electrodeGroupList{3} = [8:11  13:15 (32+[11:12 15:18])];       groupNameList{3} = 'Fronto-Central'; % Fronto-Central
+        electrodeGroupList{4} = [1:7 (32+(1:8))];                       groupNameList{4} = 'Frontal'; % Frontal
+        electrodeGroupList{5} = [12 16 17 22 (32+[9 10 13 14 19 23])];  groupNameList{5} = 'Temporal'; % Temporal   
+        
+        highPriorityElectrodeNums = [24 26 29 30 31 57 58 61 62 63];
         
     elseif gridLayout == 3 % 10-20 system
         electrodeArray = ...
@@ -66,7 +100,7 @@ if strcmpi(gridType,'EEG')
         %              '   ' '   ' 'PO1' '   ' '   ' '   ' 'PO2' '   ' '   ' '   ';
         %              '   ' '   ' '   ' 'O1' '   ' 'O2' '   ' '   ' '   ' '   '];
     
-    elseif gridLayout == 4  % coco EEG
+    elseif gridLayout == 4  % monkey EEG without LFP
         electrodeArray = ...
             [00 00 00 00 00 00 00 00 00 ;
              00 00 00 00 00 00 00 00 00 ;
@@ -127,7 +161,24 @@ if strcmpi(gridType,'EEG')
         electrodeGroupList{2} = [11:15 19:20 22:23 (32+[11:13 19:22])]; groupNameList{2} = 'Centro-Parietal'; % Centro-Parietal
         electrodeGroupList{3} = [6:8 24:25 28:29   (32+[7:9 24:26])];   groupNameList{3} = 'Fronto-Central'; % Fronto-Central
         electrodeGroupList{4} = [1:4 30:32 (32+[1:5 28:31])];           groupNameList{4} = 'Frontal'; % Frontal
-        electrodeGroupList{5} = [5 9:10 21 26:27 (32+[6 10 23 27])];    groupNameList{5} = 'Temporal'; % Temporal        
+        electrodeGroupList{5} = [5 9:10 21 26:27 (32+[6 10 23 27])];    groupNameList{5} = 'Temporal'; % Temporal
+        
+        highPriorityElectrodeNums = [14 16:18 19 (32 + [12 15:17 20])];
+             
+    elseif gridLayout == 7 % actiCap31Posterior
+        
+        electrodeArray = ...
+           [00 00 00 00 00 00 00 00 00 00 00;
+            00 00 00 00 00 00 00 00 00 00 00;
+            00 00 00 00 00 32 00 00 00 00 00;
+            00 00 00 00 00 00 00 00 00 00 00;
+            00 00 00 00 00 01 00 00 00 00 00;
+            02 03 04 05 06 07 08 09 10 11 12;
+            00 13 14 15 16 17 18 19 20 21 00;
+            00 00 00 22 23 24 25 26 00 00 00;
+            00 00 27 00 28 29 30 00 31 00 00];     
+        
+        highPriorityElectrodeNums = [15 16 18 19 23 24 25 28 29 30];    
     end
     
     if electrodeNum<1 || electrodeNum>max(electrodeArray(:))
@@ -137,7 +188,6 @@ if strcmpi(gridType,'EEG')
         [row,column] = find(electrodeArray==electrodeNum);
     end
 end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% Microelectrode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if strcmpi(gridType,'Microelectrode')
@@ -215,6 +265,9 @@ if strcmpi(gridType,'ECoG')
     if gridLayout==14
         goodElectrodeList = 1:4;
         electrodeArray = [1 2 3 4];
+    elseif gridLayout==18
+        goodElectrodeList = 1:8;
+        electrodeArray = [1 2 3 4 5 6 7 8];    
     elseif gridLayout==24
         goodElectrodeList = 1:8;
         electrodeArray = ...
@@ -224,9 +277,16 @@ if strcmpi(gridType,'ECoG')
         goodElectrodeList = 1:16;
         electrodeArray = ...
             [01 02 03 04;
-             05 06 07 08
-             09 10 11 12
+             05 06 07 08;
+             09 10 11 12;
              13 14 15 16];
+    elseif gridLayout==84
+        goodElectrodeList = 1:32;
+        electrodeArray = ...
+            [01 02 03 04 05 06 07 08;
+             09 10 11 12 13 14 15 16;
+             17 18 19 20 21 22 23 24;
+             25 26 27 28 29 30 31 32];
     else
         
         goodElectrodeList = [1:34 65:96];
@@ -246,4 +306,9 @@ if strcmpi(gridType,'ECoG')
         [row,column] = find(electrodeArray==electrodeNum);
     end
 end
+
+if ~exist('electrodeGroupList','var');      electrodeGroupList=[];      end
+if ~exist('groupNameList','var');           groupNameList=[];           end
+if ~exist('highPriorityElectrodeNums','var'); highPriorityElectrodeNums=[]; end
+
 end
