@@ -1,9 +1,10 @@
 % Display All Channels
-function displayAllChannelsGRF(subjectName,expDate,protocolName,folderSourceString,gridType,gridLayout)
+function displayAllChannelsGRF(subjectName,expDate,protocolName,folderSourceString,gridType,gridLayout,badTrialNameStr)
 
 if ~exist('folderSourceString','var');   folderSourceString='E:';       end
 if ~exist('gridType','var');             gridType='EEG';                end
 if ~exist('gridLayout','var');          gridLayout=0;                   end
+if ~exist('badTrialNameStr','var');     badTrialNameStr = '_v5';        end
 
 folderName = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName);
 
@@ -304,26 +305,70 @@ uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Show electrode array and bad channels
 electrodeGridPos = [staticStartPos panelStartHeight staticPanelWidth panelHeight];
+[~,~,electrodeArray,electrodeGroupList,groupNameList] = electrodePositionOnGrid(1,gridType,subjectName,gridLayout);
+showElectrodeGroupsFlag = ~isempty(electrodeGroupList);
 
-% Get Bad channels
-impedanceFileName = fullfile(folderSourceString,'data',subjectName,gridType,expDate,'impedanceValues.mat');
+if showElectrodeGroupsFlag
+    numElectrodeGroups = length(electrodeGroupList);
+    colorNamesElectrodeGroups = jet(numElectrodeGroups);
+    for iG=1:numElectrodeGroups
+        hElectrodes = showElectrodeLocations(electrodeGridPos,electrodeGroupList{iG},colorNamesElectrodeGroups(iG,:),[],1,0,gridType,subjectName,gridLayout);
+        text(hElectrodes,-0.35,iG/10,groupNameList{iG},'color',colorNamesElectrodeGroups(iG,:),'unit','normalized');
+    end
+end
+
+% Get Bad channels from the main impedance file
+if strcmp(gridType,'EEG')
+    impedanceFileName = fullfile(folderSourceString,'data',subjectName,gridType,expDate,'impedanceData.mat');
+    badImpedanceCutoff = 25;
+    highImpedanceCutoff = 20;
+else
+    impedanceFileName = fullfile(folderSourceString,'data',subjectName,gridType,expDate,'impedanceValues.mat');
+    badImpedanceCutoff = 2500;
+    highImpedanceCutoff = 1500;
+end
 if exist(impedanceFileName,'file')
     impedanceValues = getImpedanceValues(impedanceFileName);
-    badChannels = find(impedanceValues>2500);
-    highImpChannels = find(impedanceValues>1500);
+    badChannels = [find(impedanceValues>badImpedanceCutoff) find(isnan(impedanceValues))];
+    highImpChannels = find(impedanceValues>highImpedanceCutoff);
 else
     disp('Could not find impedance values');
     badChannels=[];
     highImpChannels=[];
 end
 
-hElectrodes = showElectrodeLocations(electrodeGridPos,highImpChannels,'m',[],0,0,gridType,subjectName,gridLayout);
-showElectrodeLocations(electrodeGridPos,badChannels,'r',[],1,0,gridType,subjectName,gridLayout);
+% Bad electrodes are also calculated using a more involved pipeline. If
+% that exists, use those bad electrodes instead
+impedanceFileName = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName,'segmentedData',['badTrials' badTrialNameStr '.mat']);
+if exist(impedanceFileName,'file')
+    x=load(impedanceFileName);
+    badChannels = unique([x.badElecs.badImpedanceElecs; x.badElecs.noisyElecs; x.badElecs.flatPSDElecs; x.badElecs.declaredBadElectrodes]);
+    highImpChannels = setdiff(highImpChannels,badChannels);
+    badTrials = x.badTrials;
+    goodChannels = setdiff(1:length(x.allBadTrials),badChannels);
+    saveAvgRefData(folderLFP,goodChannels);
+else
+    badTrials = [];
+end
+
+if ~isempty(highImpChannels)
+    showElectrodeLocations(electrodeGridPos,highImpChannels,'m',[],1,0,gridType,subjectName,gridLayout);
+    text(hElectrodes,-0.35,0.9,'HighImpedance','color','m','unit','normalized');
+end
+if ~isempty(badChannels)
+    showElectrodeLocations(electrodeGridPos,badChannels,'r',[],1,0,gridType,subjectName,gridLayout);
+    text(hElectrodes,-0.35,1,'Bad','color','r','unit','normalized');
+end
 
 % Get main plot and message handles
-[~,~,electrodeArray] = electrodePositionOnGrid(1,gridType,subjectName,gridLayout);
 [numRows,numCols] = size(electrodeArray);
-plotHandles = getPlotHandles(numRows,numCols);
+
+if ~showElectrodeGroupsFlag
+    plotHandles = getPlotHandles(numRows,numCols,[0.05 0.1 0.9 0.55]);
+else
+    plotHandles = getPlotHandles(numRows,numCols,[0.05 0.1 0.7 0.55]);
+    plotHandles2 = getPlotHandles(numElectrodeGroups+1,1,[0.8 0.1 0.15 0.55]);
+end
 
 hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
     'Style','text','String',[subjectName expDate protocolName],'FontSize',fontSizeLarge);
@@ -351,6 +396,8 @@ neuralChannelsStored = intersect(neuralChannelsStored,unique(electrodeArray));
             goodPos = parameterCombinations{a,e,s,f,o};
         end
         
+        goodPos = setdiff(goodPos,badTrials);
+        
         analysisType = get(hAnalysisType,'val');
         referenceChannelString = referenceChannelStringArray{get(hReferenceChannel,'val')};
         plotColor = colorNames(get(hChooseColor,'val'));
@@ -375,7 +422,7 @@ neuralChannelsStored = intersect(neuralChannelsStored,unique(electrodeArray));
                 
             else
                 channelsStored = analogChannelsStored;
-                plotLFPData(plotHandles,channelsStored,goodPos,folderLFP,...
+                [valToPlot,valToPlotBL,xValToPlot]=plotLFPData(plotHandles,channelsStored,goodPos,folderLFP,...
                     analysisType,timeVals,plotColor,blRange,stRange,gridType,subjectName,gridLayout,referenceChannelString);
             end
             
@@ -388,6 +435,11 @@ neuralChannelsStored = intersect(neuralChannelsStored,unique(electrodeArray));
             yRange = getYLims(plotHandles,channelsStored,gridType,subjectName,gridLayout);
             set(hYMin,'String',num2str(yRange(1))); set(hYMax,'String',num2str(yRange(2)));
             rescaleData(plotHandles,channelsStored,[xRange yRange],gridType,subjectName,gridLayout);
+            
+            if showElectrodeGroupsFlag
+                plotAvgData(plotHandles2,valToPlot,valToPlotBL,xValToPlot,electrodeGroupList,badChannels,plotColor,groupNameList,colorNamesElectrodeGroups,referenceChannelString);
+                rescalePlots(plotHandles2,[xRange yRange]);
+            end
         end
     end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -409,7 +461,9 @@ neuralChannelsStored = intersect(neuralChannelsStored,unique(electrodeArray));
         
         yRange = [str2double(get(hYMin,'String')) str2double(get(hYMax,'String'))];
         rescaleData(plotHandles,channelsStored,[xRange yRange],gridType,subjectName,gridLayout);
-        
+        if showElectrodeGroupsFlag
+            rescalePlots(plotHandles2,[xRange yRange]);
+        end
     end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function rescaleData_Callback(~,~)
@@ -430,43 +484,62 @@ neuralChannelsStored = intersect(neuralChannelsStored,unique(electrodeArray));
         
         yRange = getYLims(plotHandles,channelsStored,gridType,subjectName,gridLayout);
         rescaleData(plotHandles,channelsStored,[xRange yRange],gridType,subjectName,gridLayout);
+        if showElectrodeGroupsFlag
+            rescalePlots(plotHandles2,[xRange yRange]);
+        end
     end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function holdOn_Callback(source,~)
         holdOnState = get(source,'Value');
-        
-        [numRow,numCol] = size(plotHandles);
-        
-        if holdOnState
-            for i=1:numRow
-                for j=1:numCol
-                    set(plotHandles(i,j),'Nextplot','add');
-                end
-            end
-        else
-            for i=1:numRow
-                for j=1:numCol
-                    set(plotHandles(i,j),'Nextplot','replace');
-                end
-            end
+        holdOnData(plotHandles,holdOnState);
+        if showElectrodeGroupsFlag
+            holdOnData(plotHandles2,holdOnState);
         end
     end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function cla_Callback(~,~)
-        [numRow,numCol] = size(plotHandles);
-        for i=1:numRow
-            for j=1:numCol
-                cla(plotHandles(i,j));
-            end
+        claPlots(plotHandles);
+        if showElectrodeGroupsFlag
+            claPlots(plotHandles2);
         end
-        
     end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function saveAvgRefData(folderData,goodChannels)
+
+avgRefFileName = fullfile(folderData,'AvgRef.mat');
+
+if exist(avgRefFileName,'file')
+    x = load(avgRefFileName);
+    
+    if isequal(goodChannels,x.goodChannels)
+        doAvgRef=0;
+    else
+        disp('Changing average reference ...');
+        doAvgRef=1;
+    end
+else
+    doAvgRef=1;
+end
+
+if doAvgRef
+    disp('Generating average reference...');
+    allData = [];
+    for i=1:length(goodChannels)
+        channelNum=goodChannels(i);
+        x = load(fullfile(folderData,['elec' num2str(channelNum)]));
+        analogData = x.analogData;
+        allData = cat(3,allData,analogData);
+    end
+    analogData = squeeze(mean(allData,3));
+    save(avgRefFileName,'analogData','goodChannels');
+end
+
+end
 % Main function that plots the data
-function plotLFPData(plotHandles, channelsStored, goodPos, ...
+function [valToPlot,valToPlotBL,xValToPlot]=plotLFPData(plotHandles, channelsStored, goodPos, ...
     folderData, analysisType, timeVals, plotColor,blRange,stRange,gridType,subjectName,gridLayout,referenceChannelString)
 
 if isempty(goodPos)
@@ -480,7 +553,11 @@ else
     xsBL = 0:1/(diff(blRange)):Fs-1/(diff(blRange));
     xsST = 0:1/(diff(stRange)):Fs-1/(diff(stRange));
     
-    for i=1:length(channelsStored)
+    numChannelsStored=length(channelsStored);
+    valToPlot = cell(numChannelsStored,1);
+    valToPlotBL = cell(numChannelsStored,1);
+    
+    for i=1:numChannelsStored
         
         channelNum = channelsStored(i);
         disp(['Plotting electrode ' num2str(channelNum)]);
@@ -514,6 +591,10 @@ else
             %Plot
             plot(plotHandles(row,column),timeVals,erp,'color',plotColor);
             
+            valToPlot{i} = erp;
+            valToPlotBL{i} = [];
+            xValToPlot = timeVals;
+            
         elseif analysisType == 2    % compute Firing rates
             disp('Use plotSpikeData instead of plotLFPData...');
             
@@ -527,12 +608,20 @@ else
                 set(plotHandles(row,column),'Nextplot','add');
                 plot(plotHandles(row,column),xsST,log10(mean(fftST)),'k');
                 set(plotHandles(row,column),'Nextplot','replace');
+                
+                valToPlot{i} = log10(mean(fftST));
+                valToPlotBL{i} = log10(mean(fftBL));
+                xValToPlot = xsST;
             else
                 if xsBL == xsST %#ok<*BDSCI>
                     plot(plotHandles(row,column),xsBL,log10(mean(fftST))-log10(mean(fftBL)),'color',plotColor);
                     set(plotHandles(row,column),'Nextplot','add');
                     plot(plotHandles(row,column),xsBL,zeros(1,length(xsBL)),'color','k');
                     set(plotHandles(row,column),'Nextplot','replace');
+                    
+                    valToPlot{i} = log10(mean(fftST))-log10(mean(fftBL));
+                    valToPlotBL{i} = zeros(1,length(xsBL));
+                    xValToPlot = xsST;
                 else
                     disp('Choose same baseline and stimulus periods..');
                 end
@@ -550,12 +639,21 @@ else
                 set(plotHandles(row,column),'Nextplot','add');
                 plot(plotHandles(row,column),xsST,log10(fftERPST),'k');
                 set(plotHandles(row,column),'Nextplot','replace');
+                
+                valToPlot{i} = log10(fftERPST);
+                valToPlotBL{i} = log10(fftERPBL);
+                xValToPlot = xsST;
             else
                 if xsBL == xsST %#ok<*BDSCI>
                     plot(plotHandles(row,column),xsBL,log10(fftERPST)-log10(fftERPBL),'color',plotColor);
                     set(plotHandles(row,column),'Nextplot','add');
                     plot(plotHandles(row,column),xsBL,zeros(1,length(xsBL)),'color','k');
                     set(plotHandles(row,column),'Nextplot','replace');
+                    
+                    valToPlot{i} = log10(fftERPST)-log10(fftERPBL);
+                    valToPlotBL{i} = zeros(1,length(xsBL));
+                    xValToPlot = xsST;
+                    
                 else
                     disp('Choose same baseline and stimulus periods..');
                 end
@@ -565,6 +663,49 @@ else
 end
 end
 
+function plotAvgData(plotHandles2,valToPlot,valToPlotBL,xValToPlot,electrodeGroupList,badChannels,plotColor,groupNameList,colorNamesElectrodeGroups,referenceChannelString)
+
+numElectrodeGroups = length(electrodeGroupList);
+
+valToPlot = cell2mat(valToPlot);
+valToPlotBL = cell2mat(valToPlotBL);
+
+if strcmp(referenceChannelString,'None') || strcmp(referenceChannelString,'AvgRef')
+    refChannel = [];
+else
+    refChannel = str2double(referenceChannelString(5:end));
+end
+
+allGoodElectrodes=[];
+for i=1:numElectrodeGroups
+    plotPos = numElectrodeGroups-i+1;
+    electrodesToUse = setdiff(electrodeGroupList{i},[badChannels; refChannel]);
+    allGoodElectrodes = cat(1,allGoodElectrodes,electrodesToUse(:));
+    
+    plot(plotHandles2(plotPos),xValToPlot,mean(valToPlot(electrodesToUse,:),1),'color',plotColor);
+    if ~isempty(valToPlotBL)
+        hold(plotHandles2(plotPos),'on');
+        plot(plotHandles2(plotPos),xValToPlot,mean(valToPlotBL(electrodesToUse,:),1),'color','k');
+    end
+    text(0.8,0.9,['N=' num2str(length(electrodesToUse))],'unit','normalized','Parent',plotHandles2(plotPos),'color','k');
+    ylabel(plotHandles2(plotPos),groupNameList{i},'color',colorNamesElectrodeGroups(i,:));
+    
+    if i~=numElectrodeGroups
+        set(plotHandles2(plotPos),'XTickLabel',[]);
+    end
+end
+
+% Average of all electrodes
+plotPos = numElectrodeGroups+1;
+plot(plotHandles2(plotPos),xValToPlot,mean(valToPlot(allGoodElectrodes,:),1),'color',plotColor);
+if ~isempty(valToPlotBL)
+    hold(plotHandles2(plotPos),'on');
+    plot(plotHandles2(plotPos),xValToPlot,mean(valToPlotBL(allGoodElectrodes,:),1),'color','k');
+end
+text(0.8,0.9,['N=' num2str(length(allGoodElectrodes))],'unit','normalized','Parent',plotHandles2(plotPos),'color','k');
+ylabel(plotHandles2(plotPos),'All','color','k');
+
+end
 function [baselineFiringRate,stimulusFiringRate] = plotSpikeData(plotHandles,channelsStored,goodPos, ...
     folderData, timeVals, plotColor, SourceUnitID,holdOnState,blRange,stRange,gridType,subjectName)
 
@@ -619,7 +760,6 @@ else
     end
 end
 end
-
 function yRange = getYLims(plotHandles,channelsStored,gridType,subjectName,gridLayout)
 
 % Initialize
@@ -669,6 +809,40 @@ set(plotHandles(1,1),'XTickLabel',[],'YTickLabel',[]);
 set(plotHandles(1,numCols),'XTickLabel',[],'YTickLabel',[]);
 set(plotHandles(numRows,1),'XTickLabel',[],'YTickLabel',[]);
 set(plotHandles(numRows,numCols),'XTickLabel',[],'YTickLabel',[]);
+end
+function rescalePlots(plotHandles,axisLims)
+[numRow,numCol] = size(plotHandles);
+
+for i=1:numRow
+    for j=1:numCol
+        axis(plotHandles(i,j),axisLims);
+    end
+end
+end
+function holdOnData(plotHandles,holdOnState)
+[numRow,numCol] = size(plotHandles);
+
+if holdOnState
+    for i=1:numRow
+        for j=1:numCol
+            set(plotHandles(i,j),'Nextplot','add');
+        end
+    end
+else
+    for i=1:numRow
+        for j=1:numCol
+            set(plotHandles(i,j),'Nextplot','replace');
+        end
+    end
+end
+end
+function claPlots(plotHandles)
+[numRow,numCol] = size(plotHandles);
+for i=1:numRow
+    for j=1:numCol
+        cla(plotHandles(i,j));
+    end
+end
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [outString,outArray] = getAnalogStringFromValues(analogChannelsStored,analogInputNums)
@@ -738,8 +912,7 @@ else
     SourceUnitID=[];
 end
 end
-function [parameterCombinations,aValsUnique,eValsUnique,sValsUnique,...
-    fValsUnique,oValsUnique,cValsUnique,tValsUnique] = loadParameterCombinations(folderExtract)
+function [parameterCombinations,aValsUnique,eValsUnique,sValsUnique,fValsUnique,oValsUnique,cValsUnique,tValsUnique] = loadParameterCombinations(folderExtract)
 
 x=load(fullfile(folderExtract,'parameterCombinations.mat'));
 parameterCombinations=x.parameterCombinations;
@@ -767,10 +940,14 @@ else
     tValsUnique=x.tValsUnique;
 end
 end
-% function stimResults = loadStimResults(folderExtract)
-% load ([folderExtract 'stimResults']);
-% end
 function impedanceValues = getImpedanceValues(fileName)
 x=load(fileName);
-impedanceValues = x.impedanceValues;
+if isfield(x,'impedanceValues')
+    impedanceValues = x.impedanceValues;
+elseif isfield(x,'electrodeImpedances')
+    impedanceValues = x.electrodeImpedances;
+else
+    disp('Impedance information is not available');
+    impedanceValues = [];
+end
 end
