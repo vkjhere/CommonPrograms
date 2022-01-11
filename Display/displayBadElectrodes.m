@@ -1,10 +1,11 @@
 % This program displays bad trials and electrodes, obtained by running findBadTrialsWithEEG
 
-function displayBadElectrodes(subjectName,expDate,protocolName,folderSourceString,gridType,capType,badTrialNameStr)
+function displayBadElectrodes(subjectName,expDate,protocolName,folderSourceString,gridType,capType,badTrialNameStr,checkPeriod)
 
 if ~exist('gridType','var');        gridType = 'EEG';                   end
 if ~exist('capType','var');         capType = 'actiCap64';              end
 if ~exist('badTrialNameStr','var'); badTrialNameStr = '_v5';            end
+if ~exist('checkPeriod','var');     checkPeriod = [-0.50 0.75];         end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Get data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 folderSegment = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName,'segmentedData');
@@ -91,8 +92,12 @@ allBadElectrodesCount = sum(allBadTrialsMatrix,1);
 stem(h2,1:numTrials,allBadElectrodesCount,'color',[0.5 0.5 0.5]); axis('tight');
 ylabel('#count');
 
-stem(h2,badTrials,sum(allBadTrialsMatrix(:,badTrials),1),'color',badTrialsColor);
-stem(h2,badEyeTrials,sum(allBadTrialsMatrix(:,badEyeTrials),1),'color',badEyeTrialsColor);
+if ~isempty(badTrials)
+    stem(h2,badTrials,sum(allBadTrialsMatrix(:,badTrials),1),'color',badTrialsColor);
+end
+if ~isempty(badEyeTrials)
+    stem(h2,badEyeTrials,sum(allBadTrialsMatrix(:,badEyeTrials),1),'color',badEyeTrialsColor);
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%% Show electrodes %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 h3 = getPlotHandles(1,1,[0.36 0.07 0.1 0.35]);
@@ -119,7 +124,6 @@ text(0.05,0.05,'HighPriorityElectrodes','color',highPriorityElectrodeColor);
 %%%%%%%%%%%%% Plot raw signals for highPriorityElectrodes %%%%%%%%%%%%%%%%%
 numHPElectrodes = length(highPriorityElectrodeList);
 hPlots = getPlotHandles(numHPElectrodes,2,[0.5 0.05 0.45 0.9],0.05,0.01,1);
-checkPeriod = [-0.500 0.750];
 
 lfpInfo = load(fullfile(folderSegment,'LFP','lfpInfo.mat'));
 timeVals = lfpInfo.timeVals;
