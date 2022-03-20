@@ -1,10 +1,11 @@
 % Display All Channels
-function displayAllChannelsGRF(subjectName,expDate,protocolName,folderSourceString,gridType,gridLayout,badTrialNameStr)
+function displayAllChannelsGRF(subjectName,expDate,protocolName,folderSourceString,gridType,gridLayout,badTrialNameStr,useCommonBadTrialsFlag)
 
 if ~exist('folderSourceString','var');   folderSourceString='E:';       end
 if ~exist('gridType','var');             gridType='EEG';                end
 if ~exist('gridLayout','var');          gridLayout=0;                   end
 if ~exist('badTrialNameStr','var');     badTrialNameStr = '_v5';        end
+if ~exist('useCommonBadTrialsFlag','var'); useCommonBadTrialsFlag = 1;  end
 
 folderName = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName);
 
@@ -146,7 +147,7 @@ if ~isempty(tValsUnique)
 end
 
 % Analysis Type
-analysisTypeString = 'ERP|Firing Rate|FFT|delta FFT|FFT_ERP| delta FFT_ERP';
+analysisTypeString = 'ERP|Firing Rate|FFT|delta FFT|FFT_ERP|delta FFT_ERP|TF|deltaTF';
 uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-8*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
     'Style','text','String','Analysis Type','FontSize',fontSizeSmall);
@@ -259,6 +260,19 @@ hYMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
     'Position',[timingTextWidth+timingBoxWidth 1-8*timingHeight timingBoxWidth timingHeight], ...
     'Style','edit','String','1','FontSize',fontSizeSmall);
 
+% Z Range
+uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
+    'Position',[0 1-9*timingHeight timingTextWidth timingHeight], ...
+    'Style','text','String','Z Range','FontSize',fontSizeSmall);
+hZMin = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
+    'BackgroundColor', backgroundColor, ...
+    'Position',[timingTextWidth 1-9*timingHeight timingBoxWidth timingHeight], ...
+    'Style','edit','String','0','FontSize',fontSizeSmall);
+hZMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
+    'BackgroundColor', backgroundColor, ...
+    'Position',[timingTextWidth+timingBoxWidth 1-9*timingHeight timingBoxWidth timingHeight], ...
+    'Style','edit','String','1','FontSize',fontSizeSmall);
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% Plot Options %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -277,14 +291,19 @@ hChooseColor = uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
     'Style','popup','String',colorString,'FontSize',fontSizeSmall);
 
 uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
-    'Position',[0 4*plotOptionsHeight 1 plotOptionsHeight], ...
+    'Position',[0 5*plotOptionsHeight 1 plotOptionsHeight], ...
     'Style','pushbutton','String','cla','FontSize',fontSizeMedium, ...
     'Callback',{@cla_Callback});
 
 hHoldOn = uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
-    'Position',[0 3*plotOptionsHeight 1 plotOptionsHeight], ...
+    'Position',[0 4*plotOptionsHeight 1 plotOptionsHeight], ...
     'Style','togglebutton','String','hold on','FontSize',fontSizeMedium, ...
     'Callback',{@holdOn_Callback});
+
+uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
+    'Position',[0 3*plotOptionsHeight 1 plotOptionsHeight], ...
+    'Style','pushbutton','String','rescale Z','FontSize',fontSizeMedium, ...
+    'Callback',{@rescaleZ_Callback});
 
 uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
     'Position',[0 2*plotOptionsHeight 1 plotOptionsHeight], ...
@@ -315,6 +334,8 @@ if showElectrodeGroupsFlag
         hElectrodes = showElectrodeLocations(electrodeGridPos,electrodeGroupList{iG},colorNamesElectrodeGroups(iG,:),[],1,0,gridType,subjectName,gridLayout);
         text(hElectrodes,-0.35,iG/10,groupNameList{iG},'color',colorNamesElectrodeGroups(iG,:),'unit','normalized');
     end
+else
+    hElectrodes = showElectrodeLocations(electrodeGridPos,[],[],[],1,0,gridType,subjectName,gridLayout);
 end
 
 % Get Bad channels from the main impedance file
@@ -342,13 +363,20 @@ end
 impedanceFileName = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName,'segmentedData',['badTrials' badTrialNameStr '.mat']);
 if exist(impedanceFileName,'file')
     x=load(impedanceFileName);
-    badChannels = unique([x.badElecs.badImpedanceElecs; x.badElecs.noisyElecs; x.badElecs.flatPSDElecs; x.badElecs.declaredBadElectrodes]);
+    
+    if isfield(x,'badElecs')
+        badChannels = unique([x.badElecs.badImpedanceElecs; x.badElecs.noisyElecs; x.badElecs.flatPSDElecs; x.badElecs.declaredBadElectrodes]);
+    else
+        badChannels = [];
+    end
     highImpChannels = setdiff(highImpChannels,badChannels);
     badTrials = x.badTrials;
+    allBadTrials = x.allBadTrials;
     goodChannels = setdiff(1:length(x.allBadTrials),badChannels);
     saveAvgRefData(folderLFP,goodChannels);
 else
     badTrials = [];
+    allBadTrials = [];
 end
 
 if ~isempty(highImpChannels)
@@ -396,7 +424,22 @@ neuralChannelsStored = intersect(neuralChannelsStored,unique(electrodeArray));
             goodPos = parameterCombinations{a,e,s,f,o};
         end
         
-        goodPos = setdiff(goodPos,badTrials);
+        if useCommonBadTrialsFlag
+            goodPos = setdiff(goodPos,badTrials);
+        else
+            % Use different badTrials for different electrodes
+            goodPos0 = goodPos; clear goodPos;
+            numElectrodes = length(analogChannelsStored);
+            goodPos = cell(1,numElectrodes);
+            
+            if length(allBadTrials) == numElectrodes    
+                for iElec=1:numElectrodes
+                    goodPos{iElec} = setdiff(goodPos0,allBadTrials{iElec});
+                end
+            else
+                error('length of allBadTrials not equal to numElectrodes');
+            end
+        end
         
         analysisType = get(hAnalysisType,'val');
         referenceChannelString = referenceChannelStringArray{get(hReferenceChannel,'val')};
@@ -426,20 +469,40 @@ neuralChannelsStored = intersect(neuralChannelsStored,unique(electrodeArray));
                     analysisType,timeVals,plotColor,blRange,stRange,gridType,subjectName,gridLayout,referenceChannelString);
             end
             
-            if analysisType<=2 % ERP or spikes
+            if analysisType<=2 || analysisType>=7 % ERP or spikes, or the TF plots
                 xRange = [str2double(get(hStimMin,'String')) str2double(get(hStimMax,'String'))];
             else
                 xRange = [str2double(get(hFFTMin,'String')) str2double(get(hFFTMax,'String'))];
             end
             
-            yRange = getYLims(plotHandles,channelsStored,gridType,subjectName,gridLayout);
+            if analysisType>=7 % TF plots
+                yRange = [str2double(get(hFFTMin,'String')) str2double(get(hFFTMax,'String'))];
+            else
+                yRange = getYLims(plotHandles,channelsStored,gridType,subjectName,gridLayout);
+            end
+            
             set(hYMin,'String',num2str(yRange(1))); set(hYMax,'String',num2str(yRange(2)));
             rescaleData(plotHandles,channelsStored,[xRange yRange],gridType,subjectName,gridLayout);
             
+            if analysisType>=7 % TF plots
+                zRange = getZLims(plotHandles,channelsStored,gridType,subjectName,gridLayout);
+                set(hZMin,'String',num2str(zRange(1))); set(hZMax,'String',num2str(zRange(2)));
+                rescaleZPlots(plotHandles,zRange);
+            end
             if showElectrodeGroupsFlag
                 plotAvgData(plotHandles2,valToPlot,valToPlotBL,xValToPlot,electrodeGroupList,badChannels,plotColor,groupNameList,colorNamesElectrodeGroups,referenceChannelString);
                 rescalePlots(plotHandles2,[xRange yRange]);
             end
+        end
+    end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    function rescaleZ_Callback(~,~)
+        
+        analysisType = get(hAnalysisType,'val');
+
+        if analysisType>=7 % TF plots
+            zRange = [str2double(get(hZMin,'String')) str2double(get(hZMax,'String'))];
+            rescaleZPlots(plotHandles,zRange);
         end
     end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -453,7 +516,7 @@ neuralChannelsStored = intersect(neuralChannelsStored,unique(electrodeArray));
             channelsStored = analogChannelsStored;
         end
         
-        if analysisType<=2 % ERP or spikes
+        if analysisType<=2 || analysisType>=7 % ERP or spikes, or TF plots
             xRange = [str2double(get(hStimMin,'String')) str2double(get(hStimMax,'String'))];
         else
             xRange = [str2double(get(hFFTMin,'String')) str2double(get(hFFTMax,'String'))];
@@ -476,13 +539,17 @@ neuralChannelsStored = intersect(neuralChannelsStored,unique(electrodeArray));
             channelsStored = analogChannelsStored;
         end
         
-        if analysisType<=2 % ERP or spikes
+        if analysisType<=2 || analysisType>=7 % ERP or spikes
             xRange = [str2double(get(hStimMin,'String')) str2double(get(hStimMax,'String'))];
         else
             xRange = [str2double(get(hFFTMin,'String')) str2double(get(hFFTMax,'String'))];
         end
         
-        yRange = getYLims(plotHandles,channelsStored,gridType,subjectName,gridLayout);
+        if analysisType>=7
+            yRange = [str2double(get(hYMin,'String')) str2double(get(hYMax,'String'))];
+        else
+            yRange = getYLims(plotHandles,channelsStored,gridType,subjectName,gridLayout);
+        end
         rescaleData(plotHandles,channelsStored,[xRange yRange],gridType,subjectName,gridLayout);
         if showElectrodeGroupsFlag
             rescalePlots(plotHandles2,[xRange yRange]);
@@ -539,10 +606,10 @@ end
 
 end
 % Main function that plots the data
-function [valToPlot,valToPlotBL,xValToPlot]=plotLFPData(plotHandles, channelsStored, goodPos, ...
+function [valToPlot,valToPlotBL,xValToPlot]=plotLFPData(plotHandles, channelsStored, goodPosAll, ...
     folderData, analysisType, timeVals, plotColor,blRange,stRange,gridType,subjectName,gridLayout,referenceChannelString)
 
-if isempty(goodPos)
+if isempty(goodPosAll)
     disp('No entries for this combination..')
 else
     
@@ -557,8 +624,24 @@ else
     valToPlot = cell(numChannelsStored,1);
     valToPlotBL = cell(numChannelsStored,1);
     
+    if ~iscell(goodPosAll)
+        goodPosTmp = goodPosAll; clear goodPosAll;
+        goodPosAll = cell(1,numChannelsStored);
+        for iElec=1:numChannelsStored
+            goodPosAll{iElec} = goodPosTmp; % Same for all electrodes
+        end
+    end
+
+    % Set up multitaper for TF analysis
+    movingwin = [0.25 0.025];
+    params.tapers   = [1 1];
+    params.pad      = -1;
+    params.Fs       = Fs;
+    params.trialave = 1; %averaging across trials
+                
     for i=1:numChannelsStored
         
+        goodPos = goodPosAll{i}; % Note that for bipolar ref or avg ref, goodPos should ideally have good trials for both electrodes. To be incorporated later.
         channelNum = channelsStored(i);
         disp(['Plotting electrode ' num2str(channelNum)]);
         
@@ -657,6 +740,22 @@ else
                 else
                     disp('Choose same baseline and stimulus periods..');
                 end
+            end
+            
+        elseif (analysisType == 7) || (analysisType == 8) % TF and deltaTF plots - use multitaper analysis using Chronux
+            
+            [S,timeTF,freqTF] = mtspecgramc(analogData(goodPos,:)',movingwin,params);
+            xValToPlot = timeTF+timeVals(1)-1/Fs;
+            if (analysisType==7)
+                pcolor(plotHandles(row,column),xValToPlot,freqTF,log10(S'));
+                shading(plotHandles(row,column),'interp');
+            else
+                blPos = intersect(find(xValToPlot>=blRange(1)),find(xValToPlot<blRange(2)));
+                logS = log10(S);
+                blPower = mean(logS(blPos,:),1);
+                logSBL = repmat(blPower,length(xValToPlot),1);
+                pcolor(plotHandles(row,column),xValToPlot,freqTF,10*(logS-logSBL)');
+                shading(plotHandles(row,column),'interp');
             end
         end
     end
@@ -782,6 +881,27 @@ for i=1:length(channelsStored)
 end
 yRange = [yMin yMax];
 end
+function zRange = getZLims(plotHandles,channelsStored,gridType,subjectName,gridLayout)
+
+% Initialize
+zMin = inf;
+zMax = -inf;
+
+for i=1:length(channelsStored)
+    channelNum = channelsStored(i);
+    % get position
+    [row,column] = electrodePositionOnGrid(channelNum,gridType,subjectName,gridLayout);
+    
+    tmpAxisVals = caxis(plotHandles(row,column));
+    if tmpAxisVals(1) < zMin
+        zMin = tmpAxisVals(1);
+    end
+    if tmpAxisVals(2) > zMax
+        zMax = tmpAxisVals(2);
+    end
+end
+zRange = [zMin zMax];
+end
 function rescaleData(plotHandles,channelsStored,axisLims,gridType,subjectName,gridLayout)
 
 [numRows,numCols] = size(plotHandles);
@@ -816,6 +936,15 @@ function rescalePlots(plotHandles,axisLims)
 for i=1:numRow
     for j=1:numCol
         axis(plotHandles(i,j),axisLims);
+    end
+end
+end
+function rescaleZPlots(plotHandles,caxisLims)
+[numRow,numCol] = size(plotHandles);
+
+for i=1:numRow
+    for j=1:numCol
+        caxis(plotHandles(i,j),caxisLims);
     end
 end
 end

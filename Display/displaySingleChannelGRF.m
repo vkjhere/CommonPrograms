@@ -4,12 +4,14 @@
 % color stimuli), use sideChoice to specify which of the two side to use
 % for each parameter.
 
-function displaySingleChannelGRF(subjectName,expDate,protocolName,folderSourceString,gridType,gridLayout,sideChoice)
+function displaySingleChannelGRF(subjectName,expDate,protocolName,folderSourceString,gridType,gridLayout,sideChoice,badTrialNameStr,useCommonBadTrialsFlag)
 
 if ~exist('folderSourceString','var');  folderSourceString='F:';        end
 if ~exist('gridType','var');            gridType='Microelectrode';      end
 if ~exist('gridLayout','var');          gridLayout=2;                   end
 if ~exist('sideChoice','var');          sideChoice=[];                  end
+if ~exist('badTrialNameStr','var');     badTrialNameStr = '_v5';        end
+if ~exist('useCommonBadTrialsFlag','var'); useCommonBadTrialsFlag = 1;  end
 
 folderName = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName);
 
@@ -152,7 +154,7 @@ hTemporalFreq = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Style','popup','String',temporalFreqString,'FontSize',fontSizeSmall);
 
 % Analysis Type
-analysisTypeString = 'ERP|Firing Rate|Raster|FFT|delta FFT|STA|FFT_ERP|delta FFT_ERP';
+analysisTypeString = 'ERP|Firing Rate|Raster|FFT|delta FFT|STA|FFT_ERP|delta FFT_ERP|TF|delta TF';
 uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-8*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
     'Style','text','String','Analysis Type','FontSize',fontSizeSmall);
@@ -237,52 +239,65 @@ hStimMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
 
 % FFT Range
 uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'Position',[0 1-5*timingHeight timingTextWidth timingHeight], ...
+    'Position',[0 1-4*timingHeight timingTextWidth timingHeight], ...
     'Style','text','String','FFT Range (Hz)','FontSize',fontSizeSmall);
 hFFTMin = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
     'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth 1-5*timingHeight timingBoxWidth timingHeight], ...
+    'Position',[timingTextWidth 1-4*timingHeight timingBoxWidth timingHeight], ...
     'Style','edit','String',num2str(fftRange(1)),'FontSize',fontSizeSmall);
 hFFTMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
     'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth+timingBoxWidth 1-5*timingHeight timingBoxWidth timingHeight], ...
+    'Position',[timingTextWidth+timingBoxWidth 1-4*timingHeight timingBoxWidth timingHeight], ...
     'Style','edit','String',num2str(fftRange(2)),'FontSize',fontSizeSmall);
 
 % Baseline
 uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'Position',[0 1-6*timingHeight timingTextWidth timingHeight], ...
+    'Position',[0 1-5*timingHeight timingTextWidth timingHeight], ...
     'Style','text','String','Basline (s)','FontSize',fontSizeSmall);
 hBaselineMin = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
     'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth 1-6*timingHeight timingBoxWidth timingHeight], ...
+    'Position',[timingTextWidth 1-5*timingHeight timingBoxWidth timingHeight], ...
     'Style','edit','String',num2str(baseline(1)),'FontSize',fontSizeSmall);
 hBaselineMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
     'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth+timingBoxWidth 1-6*timingHeight timingBoxWidth timingHeight], ...
+    'Position',[timingTextWidth+timingBoxWidth 1-5*timingHeight timingBoxWidth timingHeight], ...
     'Style','edit','String',num2str(baseline(2)),'FontSize',fontSizeSmall);
 
 % Stim Period
 uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'Position',[0 1-7*timingHeight timingTextWidth timingHeight], ...
+    'Position',[0 1-6*timingHeight timingTextWidth timingHeight], ...
     'Style','text','String','Stim period (s)','FontSize',fontSizeSmall);
 hStimPeriodMin = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
     'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth 1-7*timingHeight timingBoxWidth timingHeight], ...
+    'Position',[timingTextWidth 1-6*timingHeight timingBoxWidth timingHeight], ...
     'Style','edit','String',num2str(stimPeriod(1)),'FontSize',fontSizeSmall);
 hStimPeriodMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
     'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth+timingBoxWidth 1-7*timingHeight timingBoxWidth timingHeight], ...
+    'Position',[timingTextWidth+timingBoxWidth 1-6*timingHeight timingBoxWidth timingHeight], ...
     'Style','edit','String',num2str(stimPeriod(2)),'FontSize',fontSizeSmall);
 
 % Y Range
 uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
-    'Position',[0 1-8*timingHeight timingTextWidth timingHeight], ...
+    'Position',[0 1-7*timingHeight timingTextWidth timingHeight], ...
     'Style','text','String','Y Range','FontSize',fontSizeSmall);
 hYMin = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
     'BackgroundColor', backgroundColor, ...
-    'Position',[timingTextWidth 1-8*timingHeight timingBoxWidth timingHeight], ...
+    'Position',[timingTextWidth 1-7*timingHeight timingBoxWidth timingHeight], ...
     'Style','edit','String','0','FontSize',fontSizeSmall);
 hYMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
+    'BackgroundColor', backgroundColor, ...
+    'Position',[timingTextWidth+timingBoxWidth 1-7*timingHeight timingBoxWidth timingHeight], ...
+    'Style','edit','String','1','FontSize',fontSizeSmall);
+
+% Z Range
+uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
+    'Position',[0 1-8*timingHeight timingTextWidth timingHeight], ...
+    'Style','text','String','Z Range','FontSize',fontSizeSmall);
+hZMin = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
+    'BackgroundColor', backgroundColor, ...
+    'Position',[timingTextWidth 1-8*timingHeight timingBoxWidth timingHeight], ...
+    'Style','edit','String','0','FontSize',fontSizeSmall);
+hZMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
     'BackgroundColor', backgroundColor, ...
     'Position',[timingTextWidth+timingBoxWidth 1-8*timingHeight timingBoxWidth timingHeight], ...
     'Style','edit','String','1','FontSize',fontSizeSmall);
@@ -324,14 +339,19 @@ hChooseColor = uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
     'Style','popup','String',colorString,'FontSize',fontSizeSmall);
 
 uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
-    'Position',[0 4*plotOptionsHeight 1 plotOptionsHeight], ...
+    'Position',[0 5*plotOptionsHeight 1 plotOptionsHeight], ...
     'Style','pushbutton','String','cla','FontSize',fontSizeMedium, ...
     'Callback',{@cla_Callback});
 
 hHoldOn = uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
-    'Position',[0 3*plotOptionsHeight 1 plotOptionsHeight], ...
+    'Position',[0 4*plotOptionsHeight 1 plotOptionsHeight], ...
     'Style','togglebutton','String','hold on','FontSize',fontSizeMedium, ...
     'Callback',{@holdOn_Callback});
+
+uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
+    'Position',[0 3*plotOptionsHeight 1 plotOptionsHeight], ...
+    'Style','pushbutton','String','rescale Z','FontSize',fontSizeMedium, ...
+    'Callback',{@rescaleZ_Callback});
 
 uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
     'Position',[0 2*plotOptionsHeight 1 plotOptionsHeight], ...
@@ -466,17 +486,17 @@ hSigmaPlot        = getPlotHandles(1,length(sValsUnique),sigmaGrid,0.002);
             analogChannelPos = get(hAnalogChannel,'val');
             analogChannelString = analogChannelStringArray{analogChannelPos};
             rfMapVals = plotLFPData1Channel(plotHandles,analogChannelString,s,f,o,c,t,folderLFP,...
-                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString);
+                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag);
             plotLFPData1Parameter1Channel(hTemporalFreqPlot,analogChannelString,a,e,s,f,o,c,[],folderLFP,...
-                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString);
+                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag);
             plotLFPData1Parameter1Channel(hContrastPlot,analogChannelString,a,e,s,f,o,[],t,folderLFP,...
-                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString);
+                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag);
             plotLFPData1Parameter1Channel(hOrientationPlot,analogChannelString,a,e,s,f,[],c,t,folderLFP,...
-                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString);
+                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag);
             plotLFPData1Parameter1Channel(hSpatialFreqPlot,analogChannelString,a,e,s,[],o,c,t,folderLFP,...
-                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString);
+                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag);
             plotLFPData1Parameter1Channel(hSigmaPlot,analogChannelString,a,e,[],f,o,c,t,folderLFP,...
-                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString);
+                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag);
 
             if analogChannelPos<=length(analogChannelsStored)
                 channelNumber = analogChannelsStored(analogChannelPos);
@@ -493,7 +513,7 @@ hSigmaPlot        = getPlotHandles(1,length(sValsUnique),sigmaGrid,0.002);
             end
         end
 
-        if analysisType<=3  % ERP or spikes
+        if analysisType<=3 || analysisType>=9 % ERP or spikes, or TF
             xMin = str2double(get(hStimMin,'String'));
             xMax = str2double(get(hStimMax,'String'));
         elseif analysisType == 6
@@ -504,20 +524,57 @@ hSigmaPlot        = getPlotHandles(1,length(sValsUnique),sigmaGrid,0.002);
             xMax = str2double(get(hFFTMax,'String'));
         end
 
-        rescaleData(plotHandles,xMin,xMax,getYLims(plotHandles));
-        rescaleData(hTemporalFreqPlot,xMin,xMax,getYLims(hTemporalFreqPlot));
-        rescaleData(hContrastPlot,xMin,xMax,getYLims(hContrastPlot));
-        rescaleData(hOrientationPlot,xMin,xMax,getYLims(hOrientationPlot));
-        rescaleData(hSpatialFreqPlot,xMin,xMax,getYLims(hSpatialFreqPlot));
-        rescaleData(hSigmaPlot,xMin,xMax,getYLims(hSigmaPlot));
+        if analysisType<=9
+            rescaleData(plotHandles,xMin,xMax,getYLims(plotHandles));
+            rescaleData(hTemporalFreqPlot,xMin,xMax,getYLims(hTemporalFreqPlot));
+            rescaleData(hContrastPlot,xMin,xMax,getYLims(hContrastPlot));
+            rescaleData(hOrientationPlot,xMin,xMax,getYLims(hOrientationPlot));
+            rescaleData(hSpatialFreqPlot,xMin,xMax,getYLims(hSpatialFreqPlot));
+            rescaleData(hSigmaPlot,xMin,xMax,getYLims(hSigmaPlot));
+        else
+            yMin = str2double(get(hFFTMin,'String'));
+            yMax = str2double(get(hFFTMax,'String'));
+            yRange = [yMin yMax];
+            rescaleData(plotHandles,xMin,xMax,yRange);
+            rescaleData(hTemporalFreqPlot,xMin,xMax,yRange);
+            rescaleData(hContrastPlot,xMin,xMax,yRange);
+            rescaleData(hOrientationPlot,xMin,xMax,yRange);
+            rescaleData(hSpatialFreqPlot,xMin,xMax,yRange);
+            rescaleData(hSigmaPlot,xMin,xMax,yRange);
+            
+            zRange = getZLims(plotHandles);
+            set(hZMin,'String',num2str(zRange(1))); set(hZMax,'String',num2str(zRange(2)));
+            
+            rescaleZPlots(plotHandles,zRange);
+            rescaleZPlots(hTemporalFreqPlot,zRange);
+            rescaleZPlots(hContrastPlot,zRange);
+            rescaleZPlots(hOrientationPlot,zRange);
+            rescaleZPlots(hSpatialFreqPlot,zRange);
+            rescaleZPlots(hSigmaPlot,zRange);
+        end
         showElectrodeLocations(electrodeGridPos,channelNumber,plotColor,hElectrodes,holdOnState,0,gridType,subjectName,gridLayout);
+    end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    function rescaleZ_Callback(~,~)
+
+        analysisType = get(hAnalysisType,'val');
+        
+        if analysisType>=9
+            zRange = [str2double(get(hZMin,'String')) str2double(get(hZMax,'String'))];
+            rescaleZPlots(plotHandles,zRange);
+            rescaleZPlots(hTemporalFreqPlot,zRange);
+            rescaleZPlots(hContrastPlot,zRange);
+            rescaleZPlots(hOrientationPlot,zRange);
+            rescaleZPlots(hSpatialFreqPlot,zRange);
+            rescaleZPlots(hSigmaPlot,zRange);
+        end
     end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function rescaleY_Callback(~,~)
 
         analysisType = get(hAnalysisType,'val');
         
-        if analysisType<=3 % ERP or spikes
+        if analysisType<=3 || analysisType>=9 % ERP or spikes
             xMin = str2double(get(hStimMin,'String'));
             xMax = str2double(get(hStimMax,'String'));
         elseif analysisType==6
@@ -541,7 +598,7 @@ hSigmaPlot        = getPlotHandles(1,length(sValsUnique),sigmaGrid,0.002);
 
         analysisType = get(hAnalysisType,'val');
 
-        if analysisType<=3 % ERP or spikes
+        if analysisType<=3 || analysisType>=9 % ERP or spikes or TFs
             xMin = str2double(get(hStimMin,'String'));
             xMax = str2double(get(hStimMax,'String'));
         elseif analysisType==6
@@ -552,12 +609,24 @@ hSigmaPlot        = getPlotHandles(1,length(sValsUnique),sigmaGrid,0.002);
             xMax = str2double(get(hFFTMax,'String'));
         end
 
-        rescaleData(plotHandles,xMin,xMax,getYLims(plotHandles));
-        rescaleData(hTemporalFreqPlot,xMin,xMax,getYLims(hTemporalFreqPlot));
-        rescaleData(hContrastPlot,xMin,xMax,getYLims(hContrastPlot));
-        rescaleData(hOrientationPlot,xMin,xMax,getYLims(hOrientationPlot));
-        rescaleData(hSpatialFreqPlot,xMin,xMax,getYLims(hSpatialFreqPlot));
-        rescaleData(hSigmaPlot,xMin,xMax,getYLims(hSigmaPlot));
+        if analysisType<=9
+            rescaleData(plotHandles,xMin,xMax,getYLims(plotHandles));
+            rescaleData(hTemporalFreqPlot,xMin,xMax,getYLims(hTemporalFreqPlot));
+            rescaleData(hContrastPlot,xMin,xMax,getYLims(hContrastPlot));
+            rescaleData(hOrientationPlot,xMin,xMax,getYLims(hOrientationPlot));
+            rescaleData(hSpatialFreqPlot,xMin,xMax,getYLims(hSpatialFreqPlot));
+            rescaleData(hSigmaPlot,xMin,xMax,getYLims(hSigmaPlot));
+        else
+            yMin = str2double(get(hFFTMin,'String'));
+            yMax = str2double(get(hFFTMax,'String'));
+            yRange = [yMin yMax];
+            rescaleData(plotHandles,xMin,xMax,yRange);
+            rescaleData(hTemporalFreqPlot,xMin,xMax,yRange);
+            rescaleData(hContrastPlot,xMin,xMax,yRange);
+            rescaleData(hOrientationPlot,xMin,xMax,yRange);
+            rescaleData(hSpatialFreqPlot,xMin,xMax,yRange);
+            rescaleData(hSigmaPlot,xMin,xMax,yRange);
+        end
     end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function holdOn_Callback(source,~)
@@ -621,7 +690,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main function that plots the data
 function rfMapVals = plotLFPData1Channel(plotHandles,channelString,s,f,o,c,t,folderLFP,...
-analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString)
+analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag)
 
 folderExtract = fullfile(folderName,'extractedData');
 folderSegment = fullfile(folderName,'segmentedData');
@@ -650,13 +719,41 @@ else
 end
 
 % Get bad trials
-badTrialFile = fullfile(folderSegment,'badTrials.mat');
+badTrialFile = fullfile(folderSegment,['badTrials' badTrialNameStr '.mat']);
 if ~exist(badTrialFile,'file')
     disp('Bad trial file does not exist...');
-    badTrials=[];
+    badTrials=[]; allBadTrials=[];
 else
-    badTrials = loadBadTrials(badTrialFile);
-    disp([num2str(length(badTrials)) ' bad trials']);
+    [badTrials,allBadTrials] = loadBadTrials(badTrialFile);    
+end
+
+if ~useCommonBadTrialsFlag
+    badTrials = allBadTrials{str2double(channelString(5:end))};
+end
+
+disp([num2str(length(badTrials)) ' bad trials']);
+
+%%%%%%%%%%%%%%%%%%%%%%% Take a common baseline for TF plots %%%%%%%%%%%%%%%
+Fs = round(1/(timeVals(2)-timeVals(1)));
+movingwin = [0.25 0.025];
+params.tapers   = [1 1];
+params.pad      = -1;
+params.Fs       = Fs;
+params.trialave = 1; %averaging across trials
+
+useCommonBLFlag=1;
+if analysisType == 10
+    clear goodPos
+    goodPos = parameterCombinations{numCols+1,numRows+1,s,f,o,c,t};
+    goodPos = setdiff(goodPos,badTrials);
+    
+    [S,timeTF] = mtspecgramc(analogData(goodPos,:)',movingwin,params);
+    xValToPlot = timeTF+timeVals(1)-1/Fs;
+    
+    blPos = intersect(find(xValToPlot>=blRange(1)),find(xValToPlot<blRange(2)));
+    logS = log10(S);
+    blPower = mean(logS(blPos,:),1);
+    logSBLAllConditions = repmat(blPower,length(xValToPlot),1);
 end
 
 rfMapVals = zeros(numRows,numCols);
@@ -672,8 +769,7 @@ for i=1:numRows
             disp('No entries for this combination..');
         else
             disp(['pos=(' num2str(i) ',' num2str(j) ') ,n=' num2str(length(goodPos))]);
-    
-            Fs = round(1/(timeVals(2)-timeVals(1)));
+
             if round(diff(blRange)*Fs) ~= round(diff(stRange)*Fs)
                 disp('baseline and stimulus ranges are not the same');
             else
@@ -714,14 +810,34 @@ for i=1:numRows
                 fftERPST = abs(fft(mean(analogData(goodPos,stPos),1)));
                 
                 if analysisType == 7
-                    plot(plotHandles(j),xs,log10(fftERPBL),'g');
-                    set(plotHandles(j),'Nextplot','add');
-                    plot(plotHandles(j),xs,log10(fftERPST),'k');
-                    set(plotHandles(j),'Nextplot','replace');
+                    plot(plotHandles(i,j),xs,log10(fftERPBL),'g');
+                    set(plotHandles(i,j),'Nextplot','add');
+                    plot(plotHandles(i,j),xs,log10(fftERPST),'k');
+                    set(plotHandles(i,j),'Nextplot','replace');
                 end
                 
                 if analysisType == 8
-                    plot(plotHandles(j),xs,log10(fftERPST)-log10(fftERPBL),'color',plotColor);
+                    plot(plotHandles(i,j),xs,log10(fftERPST)-log10(fftERPBL),'color',plotColor);
+                end
+            
+            elseif analysisType == 9 || analysisType == 10  % TF analysis
+
+                [S,timeTF,freqTF] = mtspecgramc(analogData(goodPos,:)',movingwin,params);
+                xValToPlot = timeTF+timeVals(1)-1/Fs;
+                if (analysisType==9)
+                    pcolor(plotHandles(i,j),xValToPlot,freqTF,log10(S'));
+                    shading(plotHandles(i,j),'interp');
+                else
+                    blPos = intersect(find(xValToPlot>=blRange(1)),find(xValToPlot<blRange(2)));
+                    logS = log10(S);
+                    blPower = mean(logS(blPos,:),1);
+                    logSBL = repmat(blPower,length(xValToPlot),1); %#ok<NASGU>
+                    if useCommonBLFlag
+                        pcolor(plotHandles(i,j),xValToPlot,freqTF,10*(logS-logSBLAllConditions)');
+                    else
+                        pcolor(plotHandles(i,j),xValToPlot,freqTF,10*(logS-logSBL)');
+                    end
+                    shading(plotHandles(i,j),'interp');
                 end
             end
             
@@ -753,7 +869,7 @@ end
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function plotLFPData1Parameter1Channel(plotHandles,channelString,a,e,s,f,o,c,t,folderLFP,...
-analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString)
+analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag)
 
 folderExtract = fullfile(folderName,'extractedData');
 folderSegment = fullfile(folderName,'segmentedData');
@@ -787,14 +903,19 @@ else
 end
 
 % Get bad trials
-badTrialFile = fullfile(folderSegment,'badTrials.mat');
+badTrialFile = fullfile(folderSegment,['badTrials' badTrialNameStr '.mat']);
 if ~exist(badTrialFile,'file')
     disp('Bad trial file does not exist...');
-    badTrials=[];
+    badTrials=[]; allBadTrials=[];
 else
-    badTrials = loadBadTrials(badTrialFile);
-    disp([num2str(length(badTrials)) ' bad trials']);
+    [badTrials,allBadTrials] = loadBadTrials(badTrialFile);    
 end
+
+if ~useCommonBadTrialsFlag
+    badTrials = allBadTrials{str2double(channelString(5:end))};
+end
+
+disp([num2str(length(badTrials)) ' bad trials']);
 
 % Out of a,e,s,f,o,c and t only one parameter is empty
 if isempty(a)
@@ -957,6 +1078,29 @@ for j=1:numCols
             
             if isempty(o) % Orientation tuning
                 computationVals(j) = max(mean(fftERPST(freqComputation)),1);
+            end
+       
+        elseif analysisType == 9 || analysisType == 10
+            
+            % Set up multitaper for TF analysis
+            movingwin = [0.25 0.025];
+            params.tapers   = [1 1];
+            params.pad      = -1;
+            params.Fs       = Fs;
+            params.trialave = 1; %averaging across trials
+            
+            [S,timeTF,freqTF] = mtspecgramc(analogData(goodPos,:)',movingwin,params);
+            xValToPlot = timeTF+timeVals(1)-1/Fs;
+            if (analysisType==9)
+                pcolor(plotHandles(j),xValToPlot,freqTF,log10(S'));
+                shading(plotHandles(j),'interp');
+            else
+                blPos = intersect(find(xValToPlot>=blRange(1)),find(xValToPlot<blRange(2)));
+                logS = log10(S);
+                blPower = mean(logS(blPos,:),1);
+                logSBL = repmat(blPower,length(xValToPlot),1);
+                pcolor(plotHandles(j),xValToPlot,freqTF,10*(logS-logSBL)');
+                shading(plotHandles(j),'interp');
             end
         end
 
@@ -1342,6 +1486,28 @@ end
 
 yLims=[yMin yMax];
 end
+function zLims = getZLims(plotHandles)
+
+[numRows,numCols] = size(plotHandles);
+% Initialize
+zMin = inf;
+zMax = -inf;
+
+for row=1:numRows
+    for column=1:numCols
+        % get positions
+        tmpAxisVals = caxis(plotHandles(row,column));
+        if tmpAxisVals(1) < zMin
+            zMin = tmpAxisVals(1);
+        end
+        if tmpAxisVals(2) > zMax
+            zMax = tmpAxisVals(2);
+        end
+    end
+end
+
+zLims=[zMin zMax];
+end
 function rescaleData(plotHandles,xMin,xMax,yLims)
 
 [numRows,numCols] = size(plotHandles);
@@ -1366,6 +1532,15 @@ end
 %set(plotHandles(1,numCols),'XTickLabel',[],'YTickLabel',[]);
 %set(plotHandles(numRows,1),'XTickLabel',[],'YTickLabel',[]);
 %set(plotHandles(numRows,numCols),'XTickLabel',[],'YTickLabel',[]);
+end
+function rescaleZPlots(plotHandles,zLims)
+[numRow,numCol] = size(plotHandles);
+
+for i=1:numRow
+    for j=1:numCol
+        caxis(plotHandles(i,j),zLims);
+    end
+end
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1478,9 +1653,10 @@ else
 end
 
 end
-function badTrials = loadBadTrials(badTrialFile)
+function [badTrials,allBadTrials] = loadBadTrials(badTrialFile)
 x=load(badTrialFile);
 badTrials=x.badTrials;
+allBadTrials=x.allBadTrials;
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function [aziCenter,eleCenter] = getRFcenterSimple(aValsUnique,eValsUnique,rfMapValues)
