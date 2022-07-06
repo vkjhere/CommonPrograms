@@ -44,7 +44,9 @@ for i=1:numRows
     for j=1:numCols
         textPosX = dX/2+(j-1)*dX;
         textPosY = dY/2+(numRows-i)*dY;
-        text(textPosX,textPosY,entries{i,j},'Units','Normalized','HorizontalAlignment','center','color',textColor{i},'Parent',h);
+        if ~isempty(entries{i,j})
+            text(textPosX,textPosY,entries{i,j},'Units','Normalized','HorizontalAlignment','center','color',textColor{i},'Parent',h);
+        end
     end
 end
 
