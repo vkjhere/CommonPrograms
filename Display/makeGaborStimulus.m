@@ -4,15 +4,23 @@
 % x' = xcos(theta)-ysin(theta)
 % y' = xsin(theta)+ycos(theta)
 
-function [gaborPatch,aperature] = makeGaborStimulus(gaborStim,aVals,eVals,showGabor)
+% Adding option to draw a colored luminance grating specified by hueDeg (0 to 360) and sat(0 to 1).
+function [gaborPatch,aperature] = makeGaborStimulus(gaborStim,aVals,eVals,showGabor,hueDeg,sat)
 
 if ~exist('showGabor','var');               showGabor=0;                end
+if ~exist('hueDeg','var');                  hueDeg=[];                  end
 
 azi = gaborStim.azimuthDeg;
 ele = gaborStim.elevationDeg;
 sf  = gaborStim.spatialFreqCPD;
 ori = gaborStim.orientationDeg;
 C   = gaborStim.contrastPC/2;
+
+if isfield(gaborStim,'spatialFreqPhaseDeg')
+    phi = gaborStim.spatialFreqPhaseDeg*(pi/180);
+else
+    phi=0;
+end
 
 if length(gaborStim.radiusDeg)==1    % Gabor
     radMax = gaborStim.radiusDeg;
@@ -21,7 +29,6 @@ else
     radMax = gaborStim.radiusDeg(2);
     radMin = gaborStim.radiusDeg(1);
 end
-
 
 % Make a 2D grating
 theta = pi*ori/180; % converting to radians
@@ -35,7 +42,7 @@ aperature = zeros(nE,nA);
 for e=1:nE
     for a=1:nA
         xg = aVals(a)*cos(theta) - eVals(e)*sin(theta);
-        grating(e,a) = C*sin(2*pi*sf*xg);
+        grating(e,a) = C*sin(2*pi*sf*xg + phi);
         
         distance = sqrt((aVals(a)-azi)^2+(eVals(e)-ele)^2);
         
@@ -59,16 +66,35 @@ params(6) = 1;
 % set everything outside radius to zero
 gaborPatch = 50+GaussianEnvelope.*aperature.*grating;
 
+% If hue and sat values are provided, fill with color
+if ~isempty(hueDeg)
+    gaborHSV(:,:,3) = gaborPatch/100; % Val between 0-1
+    gaborHSV(:,:,1) = hueDeg/360; % Hue between 0-1
+    gaborHSV(:,:,2) = sat; % Sat between 0-1
+    
+    gaborRGB = hsv2rgb(gaborHSV); % Convert from HSV to RGB
+    
+    % setting background back to gray 0.5
+    gaborRGB(:,:,1) = (~aperature)*0.5+gaborRGB(:,:,1).*(aperature);
+    gaborRGB(:,:,2) = (~aperature)*0.5+gaborRGB(:,:,2).*(aperature);
+    gaborRGB(:,:,3) = (~aperature)*0.5+gaborRGB(:,:,3).*(aperature);
+
+    gaborPatch=gaborRGB;
+end
+
+% Note that previous we were using pcolor for which the y-axis goes from
+% small to large values like the monitor. But now we have to use imagesc to
+% show color images, for which the y-axis orientation gets flipped.
 if showGabor
     colormap('gray');
     subplot(221);
-    pcolor(aVals,eVals,grating); shading interp; colorbar;
+    imagesc(aVals,eVals,grating); colorbar;
     subplot(222);
-    pcolor(aVals,eVals,GaussianEnvelope); shading interp; colorbar;
+    imagesc(aVals,eVals,GaussianEnvelope); colorbar;
     subplot(223);
-    pcolor(aVals,eVals,aperature); shading interp; colorbar;
+    imagesc(aVals,eVals,aperature); colorbar;
     subplot(224);
-    pcolor(aVals,eVals,gaborPatch); shading interp; colorbar
+    imagesc(aVals,eVals,gaborPatch); colorbar
     hold on;
     plot(boundaryX,boundaryY,'r');
 end
