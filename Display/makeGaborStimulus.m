@@ -4,11 +4,10 @@
 % x' = xcos(theta)-ysin(theta)
 % y' = xsin(theta)+ycos(theta)
 
-% Adding option to draw a colored luminance grating specified by hueDeg (0 to 360) and sat(0 to 1).
-function [gaborPatch,aperature] = makeGaborStimulus(gaborStim,aVals,eVals,showGabor,hueDeg,sat)
+% Adding option to draw a colored luminance grating specified by gaborStim.hueDeg (0 to 360) and gaborStim.sat(0 to 1).
+function [gaborPatch,aperature] = makeGaborStimulus(gaborStim,aVals,eVals,showGabor)
 
 if ~exist('showGabor','var');               showGabor=0;                end
-if ~exist('hueDeg','var');                  hueDeg=[];                  end
 
 azi = gaborStim.azimuthDeg;
 ele = gaborStim.elevationDeg;
@@ -64,13 +63,13 @@ params(6) = 1;
 [~,GaussianEnvelope,boundaryX,boundaryY] = gauss2D(params,aVals,eVals,[]);
 
 % set everything outside radius to zero
-gaborPatch = 50+GaussianEnvelope.*aperature.*grating;
+gaborPatch = (50+GaussianEnvelope.*aperature.*grating)/100; % Now between 0 and 1 to maintain uniformity with colored gratings. Earlier was between 0 and 100.
 
 % If hue and sat values are provided, fill with color
-if ~isempty(hueDeg)
-    gaborHSV(:,:,3) = gaborPatch/100; % Val between 0-1
-    gaborHSV(:,:,1) = hueDeg/360; % Hue between 0-1
-    gaborHSV(:,:,2) = sat; % Sat between 0-1
+if isfield(gaborStim,'hueDeg')
+    gaborHSV(:,:,3) = gaborPatch; % Val between 0-1
+    gaborHSV(:,:,1) = gaborStim.hueDeg/360; % Hue between 0-1
+    gaborHSV(:,:,2) = gaborStim.sat; % Sat between 0-1
     
     gaborRGB = hsv2rgb(gaborHSV); % Convert from HSV to RGB
     
