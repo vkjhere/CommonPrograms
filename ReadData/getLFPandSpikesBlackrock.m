@@ -128,7 +128,7 @@ neuralChannelNums  = str2num(neuralLabels(:,startLabelPosElec:end));
 
 % Display these numbers
 disp(['Total number of Analog channels recorded: ' num2str(cAnalog) ', electrodes: ' num2str(electrodeCount) ', Inp: ' num2str(ainpCount)]);
-disp(['Total number of Segments recorded: ' num2str(cSegment)]);
+disp(['Total number of Segments recorded: ' num2str(cSegment) ', to be analyzed: ' num2str(length(segmentChannelNums))]);
 disp(['Total number of Neurons recorded: ' num2str(cNeural)]);
 
 % Get the desired number of samples

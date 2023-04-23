@@ -17,7 +17,7 @@ else
     impedanceValues = zeros(1,96);
     for i=1:96
         for j=1:length(X)
-            if strcmp(X{j},['elec' num2str(i)])
+            if strcmp(X{j},['elec' num2str(i)]) || strcmp(X{j},['elec1-' num2str(i)]) || strcmp(X{j},['elec2-' num2str(i)])
                 impedanceValues(i) = str2double(X{j+1});
                 break;
             end
