@@ -458,8 +458,8 @@ neuralChannelsStored = intersect(neuralChannelsStored,unique(electrodeArray));
                     timeVals,plotColor,SourceUnitID,holdOnState,blRange,stRange,gridType,subjectName);
                 responsiveElectrodes = (channelsStored(stimulusFiringRate>=5));
                 inhibitedElectrodes = (channelsStored(intersect(find(baselineFiringRate>=5),find(stimulusFiringRate<=5))));
-                disp(['responsive: ' num2str(responsiveElectrodes)]);
-                disp(['inhibited : ' num2str(inhibitedElectrodes)]);
+%                disp(['responsive: ' num2str(responsiveElectrodes)]);
+%                disp(['inhibited : ' num2str(inhibitedElectrodes)]);
                 showElectrodeLocations(electrodeGridPos,responsiveElectrodes,'b',hElectrodes,1,0,gridType,subjectName,gridLayout);
                 showElectrodeLocations(electrodeGridPos,inhibitedElectrodes,'g',hElectrodes,1,0,gridType,subjectName,gridLayout);
                 

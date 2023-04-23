@@ -744,7 +744,7 @@ params.trialave = 1; %averaging across trials
 useCommonBLFlag=1;
 if analysisType == 10
     clear goodPos
-    goodPos = parameterCombinations{numCols+1,numRows+1,s,f,o,c,t};
+    goodPos = parameterCombinations{size(parameterCombinations,1),size(parameterCombinations,2),s,f,o,c,t};
     goodPos = setdiff(goodPos,badTrials);
     
     [S,timeTF] = mtspecgramc(analogData(goodPos,:)',movingwin,params);
