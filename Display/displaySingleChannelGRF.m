@@ -422,6 +422,8 @@ hContrastPlot     = getPlotHandles(1,length(cValsUnique),contrastGrid,0.002);
 hOrientationPlot  = getPlotHandles(1,length(oValsUnique),orientationGrid,0.002);
 hSpatialFreqPlot  = getPlotHandles(1,length(fValsUnique),spatialFreqGrid,0.002);
 hSigmaPlot        = getPlotHandles(1,length(sValsUnique),sigmaGrid,0.002);
+
+colormap jet
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % functions
     function plotData_Callback(~,~)

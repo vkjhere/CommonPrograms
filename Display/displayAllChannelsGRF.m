@@ -404,6 +404,8 @@ hMessage = uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
 % Remove non EEG channels
 analogChannelsStored = intersect(analogChannelsStored,unique(electrodeArray));
 neuralChannelsStored = intersect(neuralChannelsStored,unique(electrodeArray));
+
+colormap jet;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % functions
     function plotData_Callback(~,~)
