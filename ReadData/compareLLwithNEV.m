@@ -3,9 +3,14 @@
 % 1 - Mapping 1
 % 2 - Task Gabor
 
-function matchingParameters=compareLLwithNEV(folderExtract,activeSide,showResults)
+% Adding option to update stimResults from LL even if this data is
+% available in stimResults
 
-load(fullfile(folderExtract,'LL.mat'));
+function matchingParameters=compareLLwithNEV(folderExtract,activeSide,showResults,updateStimResultsFromLLFlag)
+
+if ~exist('updateStimResultsFromLLFlag','var'); updateStimResultsFromLLFlag=0; end
+
+load(fullfile(folderExtract,'LL.mat')); %#ok<*LOAD>
 load(fullfile(folderExtract,'stimResults.mat'));
 
 % Use trialResults instead of digitalEvents, as it has the same data nicely
@@ -87,8 +92,8 @@ end
 
 % Compare
 
-if ~isfield(stimResults,'azimuth') %#ok<NODEF>
-    disp('Stimulus parameter values not present in the digital data stream, taking from the LL file...');
+if ~isfield(stimResults,'azimuth') || updateStimResultsFromLLFlag %#ok<NODEF>
+    disp('Stimulus parameter values not present or incorrect in the digital data stream, taking from the LL file...');
     
     stimResults.azimuth = aziLL;
     stimResults.elevation = eleLL;
@@ -365,7 +370,7 @@ end
 end
 function result = compareValues(x,y)
 thres = 10^(-2);
-if max(x-y) < thres;
+if max(x-y) < thres
     result=1;
 else
     result=0;
