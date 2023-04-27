@@ -1,11 +1,12 @@
-function plotHandle = showElectrodeLocations(gridPosition,highlightElectrodes,colorNames,plotHandle,holdOnState,hideElectrodeNums,gridType,subjectName,gridLayout)
+function plotHandle = showElectrodeLocations(gridPosition,highlightElectrodes,colorNames,plotHandle,holdOnState,hideElectrodeNums,gridType,subjectName,gridLayout,refScheme)
 
 if ~exist('subjectName','var');          subjectName=[];                end
 if ~exist('hideElectrodeNums','var');    hideElectrodeNums=0;           end
 if ~exist('gridType','var');             gridType = 'Microelectrode';   end
 if ~exist('gridLayout','var');           gridLayout=2;                  end
+if ~exist('refScheme','var');           refScheme='uniPolar';           end 
 
-[~,~,electrodeArray] = electrodePositionOnGrid(1,gridType,subjectName,gridLayout);
+[~,~,electrodeArray] = electrodePositionOnGrid(1,gridType,subjectName,gridLayout,refScheme);
 [numRows,numCols] = size(electrodeArray);
 
 if ~exist('plotHandle','var') || isempty(plotHandle)
@@ -38,7 +39,7 @@ if ~isempty(highlightElectrodes)
     for i=1:length(highlightElectrodes)
         highlightElectrode=highlightElectrodes(i);
         
-        [highlightRow,highlightCol,electrodeArray] = electrodePositionOnGrid(highlightElectrode,gridType,subjectName,gridLayout);
+        [highlightRow,highlightCol,electrodeArray] = electrodePositionOnGrid(highlightElectrode,gridType,subjectName,gridLayout,refScheme);
 
         % Create patch
         patchX = (highlightCol-1)*dX;
@@ -53,7 +54,7 @@ if ~isempty(highlightElectrodes)
         end
     end
 else
-    [~,~,electrodeArray] = electrodePositionOnGrid(1,gridType,subjectName,gridLayout);
+    [~,~,electrodeArray] = electrodePositionOnGrid(1,gridType,subjectName,gridLayout,refScheme);
 end
 
 % Write electrode numbers
