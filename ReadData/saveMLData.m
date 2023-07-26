@@ -12,7 +12,10 @@ function ML = saveMLData(subjectName,expDate,protocolName,folderSourceString,gri
 
 if ~exist('folderDestinationString','var'); folderDestinationString=folderSourceString; end
 
-fileName = fullfile(folderSourceString,'data','rawData',[subjectName expDate],[subjectName expDate protocolName '.bhv2']);
+fileName = fullfile(folderSourceString,'data','rawData',[subjectName expDate],[subjectName expDate protocolName '.bhv2']); % old location
+if ~exist(fileName,'var')
+    fileName = fullfile(folderSourceString,'rawData',subjectName,[subjectName expDate],[subjectName expDate protocolName '.bhv2']); % new location
+end
 
 if ~exist(fileName,'file')
     error('ML data file does not exist');
