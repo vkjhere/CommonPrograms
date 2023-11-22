@@ -420,7 +420,7 @@ sigmaGrid        = [startXPos startYPos+ 4*(otherHeight+otherGapSize) remainingW
 hTemporalFreqPlot = getPlotHandles(1,length(tValsUnique),temporalFreqGrid,0.002);
 hContrastPlot     = getPlotHandles(1,length(cValsUnique),contrastGrid,0.002);
 hOrientationPlot  = getPlotHandles(1,length(oValsUnique),orientationGrid,0.002);
-hSpatialFreqPlot  = getPlotHandles(1,length(fValsUnique),spatialFreqGrid,0.002);
+hSpatialFreqPlot  = getPlotHandles(1,length(fValsUnique),spatialFreqGrid,0);
 hSigmaPlot        = getPlotHandles(1,length(sValsUnique),sigmaGrid,0.002);
 
 colormap jet
@@ -453,7 +453,7 @@ colormap jet
             plotColors{1} = 'g';
             plotColors{2} = 'k';
             plotSTA1Channel(plotHandles,analogChannelString,spikeChannelNumber,unitID,folderLFP,folderSpikes,...
-                s,f,o,c,t,timeVals,plotColors,blRange,stRange,folderName,staRange,removeMeanSTA);
+                s,f,o,c,t,timeVals,plotColors,blRange,stRange,folderName,staRange,removeMeanSTA,sideChoice);
             
             % Write code for this
             %plotSTA1Parameter1Channel(hOrientationPlot,analogChannelString,spikeChannelNumber,unitID,folderLFP,folderSpikes,...
@@ -1341,7 +1341,7 @@ end
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function plotSTA1Channel(plotHandles,analogChannelString,spikeChannelNumber,unitID,folderLFP,folderSpikes,...
-                s,f,o,c,t,timeVals,plotColors,blRange,stRange,folderName,staLen,removeMeanSTA)
+                s,f,o,c,t,timeVals,plotColors,blRange,stRange,folderName,staLen,removeMeanSTA,sideChoice)
 
 titleFontSize = 12;
 

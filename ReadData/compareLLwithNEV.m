@@ -75,7 +75,7 @@ elseif activeSide==2 % SRC protocol
     oriLL = LL.orientationDeg;
     
 elseif activeSide==0 % Map0
-    validMap = find(LL.stimType1==1);
+    validMap = union(find(LL.stimType1==1),find(LL.stimType1==8));
     aziLL = LL.azimuthDeg1(validMap);
     eleLL = LL.elevationDeg1(validMap);
     sigmaLL = LL.sigmaDeg1(validMap);
