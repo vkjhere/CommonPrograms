@@ -1,7 +1,7 @@
 % Modified from displayAllElectrodesGRF
 
-% cutoffs: a 3-D array with cutoffs for firingRate, snr and total spikes.
-% Set a particular threshold to zero if you don't want to use it. Default: [5 1.5 0]
+% cutoffs: a 4-D array with cutoffs for firingRate, snr, total spikes and absolute change in firing rate.
+% Set a particular threshold to zero if you don't want to use it. Default: [5 1.5 0 1]
 
 % electrodesToUse - an array of electrode numbers. If left empty, the
 % program will try to find (1) highRMSElectrodes from [subjectName gridType
@@ -11,21 +11,23 @@
 % combination can be selected by providing appropriate values as a 7-D
 % array. If left empty, all stimulus repeats are used.
 
-% analysisPeriod: duration over which firing rate is calculated. Default:[0.25 0.75]
+% stimulusPeriod: duration over which firing rate is calculated. Default:[0.25 0.75]
+% baselinePeriod: duration over which firing rate is calculated. Default:[-0.5 0]
 
-function [goodSpikeElectrodes,electrodesToUse,firingRate,snr,totalSpikes] = getGoodSpikeElectrodes(subjectName,expDate,protocolName,folderSourceString,cutoffs,badTrialNameStr,electrodesToUse,paramaterCombinationVals,analysisPeriod)
+function [goodSpikeElectrodes,electrodesToUse,firingRate,snr,totalSpikes] = getGoodSpikeElectrodes(subjectName,expDate,protocolName,folderSourceString,cutoffs,badTrialNameStr,electrodesToUse,parameterCombinationVals,stimulusPeriod,baselinePeriod)
 
 if ~exist('folderSourceString','var');  folderSourceString='N:';        end
 if ~exist('cutoffs','var');             cutoffs=[];                     end
 if ~exist('badTrialNameStr','var');     badTrialNameStr = '_v3';        end
 if ~exist('electrodesToUse','var');     electrodesToUse = [];           end
-if ~exist('paramaterCombinationVals','var'); paramaterCombinationVals = []; end
-if ~exist('analysisPeriod','var'); analysisPeriod = [0.25 0.75];        end
+if ~exist('parameterCombinationVals','var'); parameterCombinationVals = []; end
+if ~exist('stimulusPeriod','var'); stimulusPeriod = [0.25 0.75];        end
+if ~exist('baselinePeriod','var'); baselinePeriod = [-0.5 0];           end
 
 gridType='Microelectrode';
 
 if isempty(cutoffs)
-    cutoffs = [5 1.5 0];
+    cutoffs = [5 1.5 0 1];
 end
 
 folderName = fullfile(folderSourceString,'data',subjectName,gridType,expDate,protocolName);
@@ -76,7 +78,7 @@ SourceUnitID = SourceUnitID(iPos);
 % Get Combinations
 parameterCombinations = loadParameterCombinations(folderExtract);
 
-if isempty(paramaterCombinationVals)
+if isempty(parameterCombinationVals)
     a = size(parameterCombinations,1);
     e = size(parameterCombinations,2);
     s = size(parameterCombinations,3);
@@ -102,15 +104,18 @@ N = length(electrodesToUse);
 firingRate = zeros(1,N);
 snr = zeros(1,N);
 totalSpikes = zeros(1,N);
+changeInFiringRate = zeros(1,N);
 
 for i=1:N
     disp(i);
     clear spikeData
     x = load(fullfile(folderSpikes,['elec' num2str(electrodesToUse(i)) '_SID' num2str(SourceUnitID(i))]));
     spikeData = x.spikeData;
-    H = getSpikeCounts(spikeData(goodPos),analysisPeriod);
+    H = getSpikeCounts(spikeData(goodPos),stimulusPeriod);
+    HBL = getSpikeCounts(spikeData(goodPos),baselinePeriod);
     totalSpikes(i) = sum(H);
-    firingRate(i) = mean(H)/diff(analysisPeriod);
+    firingRate(i) = mean(H)/diff(stimulusPeriod);
+    changeInFiringRate(i) = abs(firingRate(i) - mean(HBL)/diff(baselinePeriod));
 
     clear segmentData
     x = load(fullfile(folderSegment,'Segments',['elec' num2str(electrodesToUse(i))]));
@@ -118,7 +123,7 @@ for i=1:N
     snr(i) = getSNR(segmentData);
 end
 
-goodSpikeElectrodes = electrodesToUse((firingRate>=cutoffs(1)) & (snr>=cutoffs(2)) & (totalSpikes>=cutoffs(3)));
+goodSpikeElectrodes = electrodesToUse((firingRate>=cutoffs(1)) & (snr>=cutoffs(2)) & (totalSpikes>=cutoffs(3)) & (changeInFiringRate>=cutoffs(4)));
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
