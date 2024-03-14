@@ -3,7 +3,27 @@
 % 2. maxLimit
 % If yes, that trial is marked as a bad trial
 
-function [allBadTrials,badTrials] = findBadTrialsWithLFPv3(monkeyName,expDate,protocolName,folderSourceString,gridType,checkTheseElectrodes,processAllElectrodes,threshold,maxLimit,minLimit,showElectrodes,saveDataFlag,checkPeriod,rejectTolerance)
+% Additions/changes made on 09 March 2024 by Surya S P
+
+% Bad trials can be now be saved for each array separately in case of dual
+% array and EEG recordings by entering the electrode numbers of an array as
+% 'checkTheseElectrodes' variable (eg. [1:48] or [49:96]) and setting the arrayString
+% variable indicating the area in which the array is placed (eg V1 or V4 or EEG).
+
+% Option to override the marginals threshold by setting marginalFlag to 1.Default is 0. 
+% Set this flag to 1 only if rejectTolerence variable is non-empty.
+
+% Bad trials file will be saved as Badtrials[ArrayString].mat.
+
+% If no arrayString is given and checkTheseElectrodes include all the electrodes then badTrials
+% common across all the electrodes are computed like in the previous version.
+
+% A minor bug where badElecsMarginalStats is computed is fixed. 
+
+% Summary figure now displays the bad trials for 'CheckTheseElectrodes'
+% only.
+
+function [allBadTrials,badTrials] = findBadTrialsWithLFPv3New(monkeyName,expDate,protocolName,folderSourceString,gridType,checkTheseElectrodes,processAllElectrodes,threshold,maxLimit,minLimit,showElectrodes,saveDataFlag,checkPeriod,rejectTolerance,marginalsFlag,arrayString)
 
 if ~exist('checkTheseElectrodes','var');     checkTheseElectrodes = [33 12 80 63 44];   end
 if ~exist('processAllElectrodes','var');     processAllElectrodes = 0;                  end
@@ -15,7 +35,8 @@ if ~exist('saveDataFlag','var');             saveDataFlag = 1;                  
 if ~exist('checkPeriod','var');              checkPeriod = [-0.7 0.8];                  end
 if ~exist('rejectTolerance','var');          rejectTolerance = 1;                       end
 if ~exist('showElectrodes','var');           showElectrodes = [];                       end
-
+if ~exist('marginalsFlag','var');            marginalsFlag = 0;                         end
+if ~exist('arrayString','var');              arrayString = [];                          end
 folderName = fullfile(folderSourceString,'data',monkeyName,gridType,expDate,protocolName);
 folderSegment = fullfile(folderName,'segmentedData');
 
@@ -125,10 +146,23 @@ end
 
 thresholdMarginal = threshold; % thresholdMarginal i.e. values> u+thresholdMarginal*sigma will be tagged as bad 
 badTrialsMarginalStats = find(marginalStim>=(mean(marginalStim)+std(marginalStim)*thresholdMarginal));
-badElecsMarginalStats = find(marginalElectrodes(electrodesForMarginals)>=(mean(marginalElectrodes(electrodesForMarginals))+std(marginalElectrodes(electrodesForMarginals))*thresholdMarginal));
+badElecsMarginalStatsPos = find(marginalElectrodes(electrodesForMarginals)>=(mean(marginalElectrodes(electrodesForMarginals))+std(marginalElectrodes(electrodesForMarginals))*thresholdMarginal));
 
-badTrials = unique(cat(2,badTrials,badTrialsMarginalStats));
-badElecs = badElecsMarginalStats;
+if marginalsFlag
+    marginalsThreshold = mean(marginalStim)+std(marginalStim)*thresholdMarginal;
+    rejectToleranceThreshold = length(checkTheseElectrodes)*rejectTolerance;
+    if marginalsThreshold<rejectToleranceThreshold
+        badTrials = intersect(badTrials,badTrialsMarginalStats);
+        if iscolumn(badTrials)
+            badTrials = badTrials';
+        end
+    else
+        badTrials = unique(cat(2,badTrials,badTrialsMarginalStats));
+    end
+else
+    badTrials = unique(cat(2,badTrials,badTrialsMarginalStats));
+end
+badElecs = electrodesForMarginals(badElecsMarginalStatsPos)'; %#ok<FNDSB> 
 
 disp(['total Trials: ' num2str(numTrials) ', bad trials indices: ' num2str(badTrials)]);
 disp(['total Elecs: ' num2str(length(marginalElectrodes)) ', bad elecs indices: ' num2str(badElecs')]);
@@ -145,7 +179,7 @@ end
 
 if saveDataFlag
     disp(['Saving ' num2str(length(badTrials)) ' bad trials']);
-    save(fullfile(folderSegment,'badTrials.mat'),'badTrials','checkTheseElectrodes','threshold','maxLimit','minLimit','checkPeriod','allBadTrials','nameElec','rejectTolerance','badElecs','badTrialsMarginalStats');
+    save(fullfile(folderSegment,['badTrials' arrayString '.mat']),'badTrials','checkTheseElectrodes','threshold','maxLimit','minLimit','checkPeriod','allBadTrials','nameElec','rejectTolerance','badElecs','badTrialsMarginalStats');
 else
     disp('Bad trials will not be saved..');
 end
@@ -202,27 +236,28 @@ text(0.05, 0.1, ['rejectTolerance : ' num2str(rejectTolerance)],'fontsize',12,'u
 h1 = getPlotHandles(1,1,[0.07 0.07 0.7 0.7]);
 subplot(h1);
 imagesc(1:numTrials,length(allBadTrials):-1:1,flipud(allBadTrialsMatrix),'parent',h1);
-set(gca,'YDir','normal'); colormap(gray);
+set(gca,'YDir','normal','ylim',[checkTheseElectrodes(1) checkTheseElectrodes(end)]); colormap(gray);
 xlabel('# trial num','fontsize',15,'fontweight','bold');
 ylabel('# electrode num','fontsize',15,'fontweight','bold');
 
 h2 = getPlotHandles(1,1,[0.07 0.8 0.7 0.17]);
 h3 = getPlotHandles(1,1,[0.8 0.07 0.18 0.7]);
 subplot(h2); cla; set(h2,'nextplot','add');
-stem(h2,1:numTrials,sum(allBadTrialsMatrix,1)); axis('tight');
+stem(h2,1:numTrials,sum(allBadTrialsMatrix(checkTheseElectrodes,:),1)); axis('tight');
 ylabel('#count');
 if ~isempty(badTrials)
-    stem(h2,badTrials,sum(allBadTrialsMatrix(:,badTrials),1),'color','r');
+    stem(h2,badTrials,sum(allBadTrialsMatrix(checkTheseElectrodes,badTrials),1),'color','r');
 end
 subplot(h3); cla; set(h3,'nextplot','add');
 stem(h3,1:length(allBadTrials),sum(allBadTrialsMatrix,2)); axis('tight'); ylabel('#count');
 if ~isempty(badElecs)
     stem(h3,badElecs,sum(allBadTrialsMatrix(badElecs,:),2),'color','r');
 end
+xlim(h3,[checkTheseElectrodes(1) checkTheseElectrodes(end)]);
 view([90 -90]);
 
-saveas(summaryFig,fullfile(folderSegment,[monkeyName expDate protocolName 'summmaryBadTrials.fig']),'fig');
-saveas(summaryFig,[monkeyName expDate protocolName 'summmaryBadTrials.fig'],'fig');
+saveas(summaryFig,fullfile(folderSegment,[monkeyName expDate protocolName 'summmaryBadTrials' arrayString '.fig']),'fig');
+%saveas(summaryFig,[monkeyName expDate protocolName 'summmaryBadTrials' arrayString '.fig'],'fig');
 
 %**************************************************************************
 % fill the badTrials summary sheet
