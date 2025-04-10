@@ -787,7 +787,7 @@ for i=1:numRows
                 erp = mean(analogData(goodPos,:),1); %#ok<*NODEF>
                 plot(plotHandles(i,j),timeVals,erp,'color',plotColor);
                 
-                rfMapVals(e,a) = rms(erp(stPos));
+                rfMapVals(e,a) = abs(min(erp(stPos)));
 
             elseif analysisType == 2  ||   analysisType == 3 % compute Firing rates
                 disp('Use plotSpikeData instead of plotLFPData...');
