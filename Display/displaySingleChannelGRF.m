@@ -45,32 +45,6 @@ plotOptionsPanelWidth = 0.2; plotOptionsStartPos = 0.775;
 backgroundColor = 'w';
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%% Static Panel %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%staticTitle = [subjectName '_' expDate '_' protocolName];
-% if 0 % don't plot the static panel
-%     hStaticPanel = uipanel('Title','Information','fontSize', fontSizeLarge, ...
-%         'Unit','Normalized','Position',[staticStartPos panelStartHeight staticPanelWidth panelHeight]);
-% 
-%     staticText = [{ '   '};
-%         {['Monkey Name: ' subjectName]}; ...
-%         {['Date: ' expDate]}; ...
-%         {['Protocol Name: ' protocolName]}; ...
-%         {'   '}
-%         {['Orientation  (Deg): ' num2str(stimResults.orientation)]}; ...
-%         {['Spatial Freq (CPD): ' num2str(stimResults.spatialFrequency)]}; ...
-%         {['Eccentricity (Deg): ' num2str(stimResults.eccentricity)]}; ...
-%         {['Polar angle  (Deg): ' num2str(stimResults.polarAngle)]}; ...
-%         {['Sigma        (Deg): ' num2str(stimResults.sigma)]}; ...
-%         {['Radius       (Deg): ' num2str(stimResults.radius)]}; ...
-%         ];
-% 
-%     tStaticText = uicontrol('Parent',hStaticPanel,'Unit','Normalized', ...
-%         'Position',[0 0 1 1], 'Style','text','String',staticText,'FontSize',fontSizeSmall);
-% end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% Dynamic panel %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 dynamicHeight = 0.06; dynamicGap=0.015; dynamicTextWidth = 0.6;
@@ -154,7 +128,7 @@ hTemporalFreq = uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Style','popup','String',temporalFreqString,'FontSize',fontSizeSmall);
 
 % Analysis Type
-analysisTypeString = 'ERP|Firing Rate|Raster|FFT|delta FFT|STA|FFT_ERP|delta FFT_ERP|TF|delta TF';
+analysisTypeString = 'ERP|Firing Rate|Raster|FFT|delta FFT|STA|FFT_ERP|delta FFT_ERP|TF|delta TF|PSDBLVsT|PSDSTVsT|delta PSDVsT';
 uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-8*(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight], ...
     'Style','text','String','Analysis Type','FontSize',fontSizeSmall);
@@ -515,7 +489,7 @@ colormap jet
             end
         end
 
-        if analysisType<=3 || analysisType>=9 % ERP or spikes, or TF
+        if analysisType<=3 || analysisType==9 || analysisType==10  % ERP or spikes, or TF
             xMin = str2double(get(hStimMin,'String'));
             xMax = str2double(get(hStimMax,'String'));
         elseif analysisType == 6
@@ -526,14 +500,15 @@ colormap jet
             xMax = str2double(get(hFFTMax,'String'));
         end
 
-        if analysisType<=9
+        if analysisType<=8
             rescaleData(plotHandles,xMin,xMax,getYLims(plotHandles));
             rescaleData(hTemporalFreqPlot,xMin,xMax,getYLims(hTemporalFreqPlot));
             rescaleData(hContrastPlot,xMin,xMax,getYLims(hContrastPlot));
             rescaleData(hOrientationPlot,xMin,xMax,getYLims(hOrientationPlot));
             rescaleData(hSpatialFreqPlot,xMin,xMax,getYLims(hSpatialFreqPlot));
             rescaleData(hSigmaPlot,xMin,xMax,getYLims(hSigmaPlot));
-        else
+
+        elseif analysisType <=10
             yMin = str2double(get(hFFTMin,'String'));
             yMax = str2double(get(hFFTMax,'String'));
             yRange = [yMin yMax];
@@ -543,6 +518,24 @@ colormap jet
             rescaleData(hOrientationPlot,xMin,xMax,yRange);
             rescaleData(hSpatialFreqPlot,xMin,xMax,yRange);
             rescaleData(hSigmaPlot,xMin,xMax,yRange);
+            
+            zRange = getZLims(plotHandles);
+            set(hZMin,'String',num2str(zRange(1))); set(hZMax,'String',num2str(zRange(2)));
+            
+            rescaleZPlots(plotHandles,zRange);
+            rescaleZPlots(hTemporalFreqPlot,zRange);
+            rescaleZPlots(hContrastPlot,zRange);
+            rescaleZPlots(hOrientationPlot,zRange);
+            rescaleZPlots(hSpatialFreqPlot,zRange);
+            rescaleZPlots(hSigmaPlot,zRange);
+
+        else
+            rescaleData(plotHandles,xMin,xMax,getYLims(plotHandles));
+            rescaleData(hTemporalFreqPlot,xMin,xMax,getYLims(hTemporalFreqPlot));
+            rescaleData(hContrastPlot,xMin,xMax,getYLims(hContrastPlot));
+            rescaleData(hOrientationPlot,xMin,xMax,getYLims(hOrientationPlot));
+            rescaleData(hSpatialFreqPlot,xMin,xMax,getYLims(hSpatialFreqPlot));
+            rescaleData(hSigmaPlot,xMin,xMax,getYLims(hSigmaPlot));
             
             zRange = getZLims(plotHandles);
             set(hZMin,'String',num2str(zRange(1))); set(hZMax,'String',num2str(zRange(2)));
@@ -576,7 +569,7 @@ colormap jet
 
         analysisType = get(hAnalysisType,'val');
         
-        if analysisType<=3 || analysisType>=9 % ERP or spikes
+        if analysisType<=3 || analysisType==9 || analysisType==10 % ERP or spikes
             xMin = str2double(get(hStimMin,'String'));
             xMax = str2double(get(hStimMax,'String'));
         elseif analysisType==6
@@ -600,7 +593,7 @@ colormap jet
 
         analysisType = get(hAnalysisType,'val');
 
-        if analysisType<=3 || analysisType>=9 % ERP or spikes or TFs
+        if analysisType<=3 || analysisType==9 || analysisType==10 % ERP or spikes or TFs
             xMin = str2double(get(hStimMin,'String'));
             xMax = str2double(get(hStimMax,'String'));
         elseif analysisType==6
@@ -611,7 +604,7 @@ colormap jet
             xMax = str2double(get(hFFTMax,'String'));
         end
 
-        if analysisType<=9
+        if analysisType<=9 || analysisType>=11
             rescaleData(plotHandles,xMin,xMax,getYLims(plotHandles));
             rescaleData(hTemporalFreqPlot,xMin,xMax,getYLims(hTemporalFreqPlot));
             rescaleData(hContrastPlot,xMin,xMax,getYLims(hContrastPlot));
@@ -839,6 +832,31 @@ for i=1:numRows
                     else
                         pcolor(plotHandles(i,j),xValToPlot,freqTF,10*(logS-logSBL)');
                     end
+                    shading(plotHandles(i,j),'interp');
+                end
+
+            elseif analysisType == 11 || analysisType == 12 || analysisType == 13   % PSD as a function of trial
+
+                params.tapers   = [5 9]; % Use MT with lots of tapers
+                params.pad      = -1;
+                params.Fs       = Fs;
+                params.trialave = 0; %averaging across trials
+
+                [SBL,xs] = mtspectrumc(analogData(goodPos,blPos)',params);
+                SST = mtspectrumc(analogData(goodPos,stPos)',params);
+
+                if analysisType == 11
+                    pcolor(xs,1:size(SBL,2),log10(SBL'),'parent',plotHandles(i,j)); 
+                    shading(plotHandles(i,j),'interp');
+                end
+
+                if analysisType == 12
+                    pcolor(xs,1:size(SST,2),log10(SST'),'parent',plotHandles(i,j)); 
+                    shading(plotHandles(i,j),'interp');
+                end
+
+                if analysisType == 13
+                    pcolor(xs,1:size(SST,2),10*(log10(SST')-log10(SBL')),'parent',plotHandles(i,j)); 
                     shading(plotHandles(i,j),'interp');
                 end
             end
@@ -1102,6 +1120,31 @@ for j=1:numCols
                 blPower = mean(logS(blPos,:),1);
                 logSBL = repmat(blPower,length(xValToPlot),1);
                 pcolor(plotHandles(j),xValToPlot,freqTF,10*(logS-logSBL)');
+                shading(plotHandles(j),'interp');
+            end
+
+        elseif analysisType == 11 || analysisType == 12 || analysisType == 13   % PSD as a function of trial
+
+            params.tapers   = [5 9]; % Use MT with lots of tapers
+            params.pad      = -1;
+            params.Fs       = Fs;
+            params.trialave = 0; %averaging across trials
+
+            [SBL,xs] = mtspectrumc(analogData(goodPos,blPos)',params);
+            SST = mtspectrumc(analogData(goodPos,stPos)',params);
+
+            if analysisType == 11
+                pcolor(xs,1:size(SBL,2),log10(SBL'),'parent',plotHandles(j));
+                shading(plotHandles(j),'interp');
+            end
+
+            if analysisType == 12
+                pcolor(xs,1:size(SST,2),log10(SST'),'parent',plotHandles(j));
+                shading(plotHandles(j),'interp');
+            end
+
+            if analysisType == 13
+                pcolor(xs,1:size(SST,2),10*(log10(SST')-log10(SBL')),'parent',plotHandles(j));
                 shading(plotHandles(j),'interp');
             end
         end
@@ -1498,7 +1541,7 @@ zMax = -inf;
 for row=1:numRows
     for column=1:numCols
         % get positions
-        tmpAxisVals = caxis(plotHandles(row,column));
+        tmpAxisVals = clim(plotHandles(row,column));
         if tmpAxisVals(1) < zMin
             zMin = tmpAxisVals(1);
         end
@@ -1540,7 +1583,7 @@ function rescaleZPlots(plotHandles,zLims)
 
 for i=1:numRow
     for j=1:numCol
-        caxis(plotHandles(i,j),zLims);
+        clim(plotHandles(i,j),zLims);
     end
 end
 end
