@@ -289,9 +289,13 @@ hSTAMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
     'BackgroundColor', backgroundColor, ...
     'Position',[timingTextWidth+timingBoxWidth 1-9*timingHeight timingBoxWidth timingHeight], ...
     'Style','edit','String',num2str(staLen(2)),'FontSize',fontSizeSmall);
+hRemoveERP = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
+    'BackgroundColor', backgroundColor, ...
+    'Position',[0 1-10*timingHeight 0.5 timingHeight], ...
+    'Style','togglebutton','String','remove ERP','FontSize',fontSizeMedium);
 hRemoveMeanSTA = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
     'BackgroundColor', backgroundColor, ...
-    'Position',[0 1-10*timingHeight 1 timingHeight], ...
+    'Position',[0.5 1-10*timingHeight 0.5 timingHeight], ...
     'Style','togglebutton','String','remove mean STA','FontSize',fontSizeMedium);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -414,7 +418,8 @@ colormap jet
         stRange = [str2double(get(hStimPeriodMin,'String')) str2double(get(hStimPeriodMax,'String'))];
         staRange = [str2double(get(hSTAMin,'String')) str2double(get(hSTAMax,'String'))];
         holdOnState = get(hHoldOn,'val');
-        removeMeanSTA = get(hRemoveMeanSTA,'val');
+        removeERPFlag = get(hRemoveERP,'val');
+        removeMeanSTAFlag = get(hRemoveMeanSTA,'val');
         referenceChannelString = referenceChannelStringArray{get(hReferenceChannel,'val')};
 
         if analysisType==6 % Spike triggered average
@@ -427,7 +432,7 @@ colormap jet
             plotColors{1} = 'g';
             plotColors{2} = 'k';
             plotSTA1Channel(plotHandles,analogChannelString,spikeChannelNumber,unitID,folderLFP,folderSpikes,...
-                s,f,o,c,t,timeVals,plotColors,blRange,stRange,folderName,staRange,removeMeanSTA,sideChoice);
+                s,f,o,c,t,timeVals,plotColors,blRange,stRange,folderName,staRange,removeMeanSTAFlag,sideChoice);
             
             % Write code for this
             %plotSTA1Parameter1Channel(hOrientationPlot,analogChannelString,spikeChannelNumber,unitID,folderLFP,folderSpikes,...
@@ -462,17 +467,17 @@ colormap jet
             analogChannelPos = get(hAnalogChannel,'val');
             analogChannelString = analogChannelStringArray{analogChannelPos};
             rfMapVals = plotLFPData1Channel(plotHandles,analogChannelString,s,f,o,c,t,folderLFP,...
-                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag);
+                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag,removeERPFlag);
             plotLFPData1Parameter1Channel(hTemporalFreqPlot,analogChannelString,a,e,s,f,o,c,[],folderLFP,...
-                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag);
+                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag,removeERPFlag);
             plotLFPData1Parameter1Channel(hContrastPlot,analogChannelString,a,e,s,f,o,[],t,folderLFP,...
-                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag);
+                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag,removeERPFlag);
             plotLFPData1Parameter1Channel(hOrientationPlot,analogChannelString,a,e,s,f,[],c,t,folderLFP,...
-                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag);
+                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag,removeERPFlag);
             plotLFPData1Parameter1Channel(hSpatialFreqPlot,analogChannelString,a,e,s,[],o,c,t,folderLFP,...
-                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag);
+                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag,removeERPFlag);
             plotLFPData1Parameter1Channel(hSigmaPlot,analogChannelString,a,e,[],f,o,c,t,folderLFP,...
-                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag);
+                analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag,removeERPFlag);
 
             if analogChannelPos<=length(analogChannelsStored)
                 channelNumber = analogChannelsStored(analogChannelPos);
@@ -685,7 +690,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main function that plots the data
 function rfMapVals = plotLFPData1Channel(plotHandles,channelString,s,f,o,c,t,folderLFP,...
-analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag)
+analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag,removeERPFlag)
 
 folderExtract = fullfile(folderName,'extractedData');
 folderSegment = fullfile(folderName,'segmentedData');
@@ -736,13 +741,21 @@ params.pad      = -1;
 params.Fs       = Fs;
 params.trialave = 1; %averaging across trials
 
-useCommonBLFlag=1;
+if removeERPFlag
+    useCommonBLFlag=0;
+else
+    useCommonBLFlag=1;
+end
 if analysisType == 10
     clear goodPos
     goodPos = parameterCombinations{size(parameterCombinations,1),size(parameterCombinations,2),s,f,o,c,t};
     goodPos = setdiff(goodPos,badTrials);
     
-    [S,timeTF] = mtspecgramc(analogData(goodPos,:)',movingwin,params);
+    signal = analogData(goodPos,:);
+    if removeERPFlag
+        signal = signal - repmat(mean(signal,1),size(signal,1),1);
+    end
+    [S,timeTF] = mtspecgramc(signal',movingwin,params);
     xValToPlot = timeTF+timeVals(1)-1/Fs;
     
     blPos = intersect(find(xValToPlot>=blRange(1)),find(xValToPlot<blRange(2)));
@@ -760,6 +773,12 @@ for i=1:numRows
         goodPos = parameterCombinations{a,e,s,f,o,c,t};
         goodPos = setdiff(goodPos,badTrials);
       
+        signal = analogData(goodPos,:);
+        erp = mean(signal,1);
+        if removeERPFlag
+            signal = signal - repmat(erp,size(signal,1),1);
+        end
+
         if isempty(goodPos)
             disp('No entries for this combination..');
         else
@@ -775,9 +794,7 @@ for i=1:numRows
                 xs = 0:1/diff(range):Fs-1/diff(range);
             end
 
-            if analysisType == 1        % compute ERP
-                clear erp
-                erp = mean(analogData(goodPos,:),1); %#ok<*NODEF>
+            if analysisType == 1        % ERP
                 plot(plotHandles(i,j),timeVals,erp,'color',plotColor);
                 
                 rfMapVals(e,a) = abs(min(erp(stPos)));
@@ -786,8 +803,8 @@ for i=1:numRows
                 disp('Use plotSpikeData instead of plotLFPData...');
                 
             elseif analysisType == 4  ||   analysisType == 5
-                fftBL = abs(fft(analogData(goodPos,blPos),[],2));
-                fftST = abs(fft(analogData(goodPos,stPos),[],2));
+                fftBL = abs(fft(signal(:,blPos),[],2));
+                fftST = abs(fft(signal(:,stPos),[],2));
 
                 if analysisType == 4
                     plot(plotHandles(i,j),xs,log10(mean(fftBL)),'g');
@@ -797,12 +814,12 @@ for i=1:numRows
                 end
 
                 if analysisType == 5
-                    plot(plotHandles(i,j),xs,log10(mean(fftST))-log10(mean(fftBL)),'color',plotColor);
+                    plot(plotHandles(i,j),xs,20*(log10(mean(fftST))-log10(mean(fftBL))),'color',plotColor);
                 end
                 
             elseif analysisType == 7 || analysisType == 8
-                fftERPBL = abs(fft(mean(analogData(goodPos,blPos),1)));
-                fftERPST = abs(fft(mean(analogData(goodPos,stPos),1)));
+                fftERPBL = abs(fft(mean(signal(:,blPos),1)));
+                fftERPST = abs(fft(mean(signal(:,stPos),1)));
                 
                 if analysisType == 7
                     plot(plotHandles(i,j),xs,log10(fftERPBL),'g');
@@ -812,12 +829,12 @@ for i=1:numRows
                 end
                 
                 if analysisType == 8
-                    plot(plotHandles(i,j),xs,log10(fftERPST)-log10(fftERPBL),'color',plotColor);
+                    plot(plotHandles(i,j),xs,20*(log10(fftERPST)-log10(fftERPBL)),'color',plotColor);
                 end
             
             elseif analysisType == 9 || analysisType == 10  % TF analysis
 
-                [S,timeTF,freqTF] = mtspecgramc(analogData(goodPos,:)',movingwin,params);
+                [S,timeTF,freqTF] = mtspecgramc(signal',movingwin,params);
                 xValToPlot = timeTF+timeVals(1)-1/Fs;
                 if (analysisType==9)
                     pcolor(plotHandles(i,j),xValToPlot,freqTF,log10(S'));
@@ -826,7 +843,7 @@ for i=1:numRows
                     blPos = intersect(find(xValToPlot>=blRange(1)),find(xValToPlot<blRange(2)));
                     logS = log10(S);
                     blPower = mean(logS(blPos,:),1);
-                    logSBL = repmat(blPower,length(xValToPlot),1); %#ok<NASGU>
+                    logSBL = repmat(blPower,length(xValToPlot),1);
                     if useCommonBLFlag
                         pcolor(plotHandles(i,j),xValToPlot,freqTF,10*(logS-logSBLAllConditions)');
                     else
@@ -842,8 +859,8 @@ for i=1:numRows
                 params.Fs       = Fs;
                 params.trialave = 0; %averaging across trials
 
-                [SBL,xs] = mtspectrumc(analogData(goodPos,blPos)',params);
-                SST = mtspectrumc(analogData(goodPos,stPos)',params);
+                [SBL,xs] = mtspectrumc(signal(:,blPos)',params);
+                SST = mtspectrumc(signal(:,stPos)',params);
 
                 if analysisType == 11
                     pcolor(xs,1:size(SBL,2),log10(SBL'),'parent',plotHandles(i,j)); 
@@ -889,7 +906,7 @@ end
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function plotLFPData1Parameter1Channel(plotHandles,channelString,a,e,s,f,o,c,t,folderLFP,...
-analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag)
+analysisType,timeVals,plotColor,blRange,stRange,folderName,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag,removeERPFlag)
 
 folderExtract = fullfile(folderName,'extractedData');
 folderSegment = fullfile(folderName,'segmentedData');
@@ -1029,6 +1046,12 @@ for j=1:numCols
     goodPos = parameterCombinations{aList(j),eList(j),sList(j),fList(j),oList(j),cList(j),tList(j)};
     goodPos = setdiff(goodPos,badTrials);
 
+    signal = analogData(goodPos,:);
+    erp = mean(signal,1);
+    if removeERPFlag
+        signal = signal - repmat(erp,size(signal,1),1);
+    end
+
     if isempty(goodPos)
         disp('No entries for this combination..')
     else
@@ -1048,11 +1071,8 @@ for j=1:numCols
         xsComputation = intersect(find(timeVals>=timeForComputation(1)),find(timeVals<timeForComputation(2)));
         freqComputation = intersect(find(xs>=freqForComputation(1)),find(xs<=freqForComputation(2)));
 
-        if analysisType == 1        % compute ERP
-            clear erp
-            erp = mean(analogData(goodPos,:),1);
-            erp = erp - mean(erp(blPos));
-            
+        if analysisType == 1        % compute ERP          
+            erp = erp - mean(erp(blPos));        
             plot(plotHandles(j),timeVals,erp,'color',plotColor);
             
             if isempty(o) % Orientation tuning
@@ -1063,8 +1083,8 @@ for j=1:numCols
             disp('Use plotSpikeData instead of plotLFPData...');
             
         elseif analysisType == 4 || analysisType == 5
-            fftBL = abs(fft(analogData(goodPos,blPos),[],2));
-            fftST = abs(fft(analogData(goodPos,stPos),[],2));
+            fftBL = abs(fft(signal(:,blPos),[],2));
+            fftST = abs(fft(signal(:,stPos),[],2));
 
             if analysisType == 4
                 plot(plotHandles(j),xs,log10(mean(fftBL)),'g');
@@ -1074,7 +1094,7 @@ for j=1:numCols
             end
 
             if analysisType == 5
-                plot(plotHandles(j),xs,log10(mean(fftST))-log10(mean(fftBL)),'color',plotColor);
+                plot(plotHandles(j),xs,20*(log10(mean(fftST))-log10(mean(fftBL))),'color',plotColor);
             end
             
             if isempty(o) % Orientation tuning
@@ -1082,8 +1102,8 @@ for j=1:numCols
             end
             
         elseif analysisType == 7 || analysisType == 8
-            fftERPBL = abs(fft(mean(analogData(goodPos,blPos),1)));
-            fftERPST = abs(fft(mean(analogData(goodPos,stPos),1)));
+            fftERPBL = abs(fft(mean(signal(:,blPos),1)));
+            fftERPST = abs(fft(mean(signal(:,stPos),1)));
 
             if analysisType == 7
                 plot(plotHandles(j),xs,log10(fftERPBL),'g');
@@ -1093,7 +1113,7 @@ for j=1:numCols
             end
 
             if analysisType == 8
-                plot(plotHandles(j),xs,log10(fftERPST)-log10(fftERPBL),'color',plotColor);
+                plot(plotHandles(j),xs,20*(log10(fftERPST)-log10(fftERPBL)),'color',plotColor);
             end
             
             if isempty(o) % Orientation tuning
@@ -1109,7 +1129,7 @@ for j=1:numCols
             params.Fs       = Fs;
             params.trialave = 1; %averaging across trials
             
-            [S,timeTF,freqTF] = mtspecgramc(analogData(goodPos,:)',movingwin,params);
+            [S,timeTF,freqTF] = mtspecgramc(signal',movingwin,params);
             xValToPlot = timeTF+timeVals(1)-1/Fs;
             if (analysisType==9)
                 pcolor(plotHandles(j),xValToPlot,freqTF,log10(S'));
@@ -1130,8 +1150,8 @@ for j=1:numCols
             params.Fs       = Fs;
             params.trialave = 0; %averaging across trials
 
-            [SBL,xs] = mtspectrumc(analogData(goodPos,blPos)',params);
-            SST = mtspectrumc(analogData(goodPos,stPos)',params);
+            [SBL,xs] = mtspectrumc(signal(:,blPos)',params);
+            SST = mtspectrumc(signal(:,stPos)',params);
 
             if analysisType == 11
                 pcolor(xs,1:size(SBL,2),log10(SBL'),'parent',plotHandles(j));
