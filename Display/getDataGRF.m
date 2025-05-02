@@ -41,10 +41,20 @@ stPos = find(timeVals>=stRange(1),1)+ (1:rangePos);
 % PSDs
 [dataOut.SBL,dataOut.freqBL] = mtspectrumc(signal(:,blPos)',params);
 [dataOut.SST,dataOut.freqST] = mtspectrumc(signal(:,stPos)',params);
+dataOut.deltaPSD = 10*(log10(dataOut.SST) - log10(dataOut.SBL));
 
 % Time-frequency data
-[dataOut.STF,timeTF,dataOut.freqTF] = mtspecgramc(signal',movingWin,params);
-dataOut.timeTF = timeTF+timeVals(1)-1/Fs;
+[STF,timeTF,dataOut.freqTF] = mtspecgramc(signal',movingWin,params);
+timeTF = timeTF+timeVals(1)-1/Fs;
+dataOut.timeTF = timeTF;
+
+% Change in power from baseline
+blPosTF = intersect(find(timeTF>=blRange(1)),find(timeTF<blRange(2)));
+logS = log10(STF);
+blPower = mean(logS(blPosTF,:),1);
+logSBL = repmat(blPower,length(timeTF),1);
+dataOut.deltaTF = 10*(logS - logSBL);
+dataOut.STF = STF;
 
 % Spike data
 dataOut.raster = dataIn.spikeData(goodPos);

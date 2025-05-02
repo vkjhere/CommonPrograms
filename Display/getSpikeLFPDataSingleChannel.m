@@ -1,7 +1,7 @@
 % This function is used to load spike and LFP data. 
 % Also loads badtrials (if available) and parameterCombinations
 
-function data = getSpikeLFPDataSingleChannel(subjectName,expDate,protocolName,folderSourceString,electrodeNumber,unitID,gridType,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag)
+function data = getSpikeLFPDataSingleChannel(subjectName,expDate,protocolName,folderSourceString,channelString,unitID,gridType,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag)
 
 if ~exist('unitID','var');              unitID = 0;                     end
 if ~exist('gridType','var');            gridType='Microelectrode';      end
@@ -17,7 +17,9 @@ folderExtract = fullfile(folderName,'extractedData');
 folderLFP = fullfile(folderSegment,'LFP');
 folderSpikes = fullfile(folderSegment,'Spikes');
 
-channelString = ['elec' num2str(electrodeNumber)];
+if isnumeric(channelString) % In case channel number is entered
+    channelString = ['elec' num2str(channelString)];
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% Get LFP data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear analogData

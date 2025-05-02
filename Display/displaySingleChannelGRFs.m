@@ -8,7 +8,7 @@
 % Useful for projects in which a particular protocol is run multiple times.
 % For example, the tES stimulation project.
 
-function displaySingleChannelGRFs(subjectName,expDate,protocolNames,folderSourceString,gridType,gridLayout,sideChoice,badTrialNameStr,useCommonBadTrialsFlag)
+function displaySingleChannelGRFs(subjectName,expDate,protocolNames,folderSourceString,gridType,gridLayout,sideChoice,badTrialNameStr,useCommonBadTrialsFlag,goodLFPElectrodes)
 
 if ~exist('folderSourceString','var');  folderSourceString='F:';        end
 if ~exist('gridType','var');            gridType='Microelectrode';      end
@@ -16,6 +16,7 @@ if ~exist('gridLayout','var');          gridLayout=2;                   end
 if ~exist('sideChoice','var');          sideChoice=[];                  end
 if ~exist('badTrialNameStr','var');     badTrialNameStr = 'V4';         end
 if ~exist('useCommonBadTrialsFlag','var'); useCommonBadTrialsFlag = 1;  end
+if ~exist('goodLFPElectrodes','var');   goodLFPElectrodes = [];         end
 
 % load LFP Information
 [analogChannelsStored,~,analogInputNums] = loadLFPInfo(subjectName,expDate,protocolNames,folderSourceString,gridType);
@@ -45,7 +46,7 @@ hDynamicPanel = uipanel('Title','Parameters','fontSize', fontSizeLarge, ...
     'Unit','Normalized','Position',[dynamicStartPos panelStartHeight dynamicPanelWidth panelHeight]);
 
 % Analog channel
-[analogChannelStringList,analogChannelStringArray] = getAnalogStringFromValues(analogChannelsStored,analogInputNums);
+[analogChannelStringList,analogChannelStringArray] = getAnalogStringFromValues(analogChannelsStored,analogInputNums,goodLFPElectrodes);
 uicontrol('Parent',hDynamicPanel,'Unit','Normalized', ...
     'Position',[0 1-(dynamicHeight+dynamicGap) dynamicTextWidth dynamicHeight],...
     'Style','text','String','Analog Channel','FontSize',fontSizeSmall);
@@ -334,6 +335,8 @@ hPSDPlots      = getPlotHandles(1,numPlots,[0.025 0.15 0.95 0.1],0.002);
 hDeltaPSDPlots = getPlotHandles(1,numPlots,[0.025 0.05 0.95 0.1],0.002);
 
 colorNames = jet(numProtocols);
+colormap jet;
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % functions
     function plotData_Callback(~,~)
@@ -345,7 +348,8 @@ colorNames = jet(numProtocols);
         c=get(hContrast,'val');
         t=get(hTemporalFreq,'val');
         
-        channelNumber = analogChannelsStored(get(hAnalogChannel,'val'));
+        channelPos = get(hAnalogChannel,'val');
+        channelString0 = analogChannelStringArray{channelPos};
         normalizeFlag = get(hNormalize,'val');
         removeERPFlag = get(hRemoveERP,'val');
         referenceChannelString = referenceChannelStringArray{get(hReferenceChannel,'val')};
@@ -360,10 +364,32 @@ colorNames = jet(numProtocols);
         holdOnState = get(hHoldOn,'val');
         
         % Get all Data
-        dataOut = cell(1,numProtocols);
-        for i=1:numProtocols
-            dataIn = getSpikeLFPDataSingleChannel(subjectName,expDate,protocolNames{i},folderSourceString,channelNumber,0,gridType,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag);
-            dataOut{i} = getDataGRF(dataIn,a,e,s,f,o,c,t,blRange,stRange,removeERPFlag);
+        if strncmpi(channelString0,'goodLFP',7) % Good LFP Electrodes
+            numGoodLFPElectrodes = length(goodLFPElectrodes);
+
+            dataOutTMP1 = cell(1,numGoodLFPElectrodes);
+            for i=1:numGoodLFPElectrodes
+                channelString = ['elec' num2str(goodLFPElectrodes(i))];
+                disp(['Working on ' channelString ', ' num2str(i) '/' num2str(numGoodLFPElectrodes)]);
+
+                dataOutTMP2 = cell(1,numProtocols);
+                for j=1:numProtocols
+                    dataIn = getSpikeLFPDataSingleChannel(subjectName,expDate,protocolNames{j},folderSourceString,channelString,0,gridType,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag);
+                    dataOutTMP2{j} = getDataGRF(dataIn,a,e,s,f,o,c,t,blRange,stRange,removeERPFlag);
+                end
+                if normalizeFlag
+                    dataOutTMP2 = normalizeData(dataOutTMP2);
+                end
+                dataOutTMP1{i} = dataOutTMP2;
+            end
+            dataOut = combineDataGRF(dataOutTMP1);
+        else
+            channelString = channelString0;
+            dataOut = cell(1,numProtocols);
+            for i=1:numProtocols
+                dataIn = getSpikeLFPDataSingleChannel(subjectName,expDate,protocolNames{i},folderSourceString,channelString,0,gridType,sideChoice,referenceChannelString,badTrialNameStr,useCommonBadTrialsFlag);
+                dataOut{i} = getDataGRF(dataIn,a,e,s,f,o,c,t,blRange,stRange,removeERPFlag);
+            end
         end
 
         if normalizeFlag
@@ -385,15 +411,7 @@ colorNames = jet(numProtocols);
             hold(hERPPlots(numPlots),'on');
 
             % deltaTF
-            timeTF = dataOut{i}.timeTF;
-            % Change in power from baseline
-            blPosTF = intersect(find(timeTF>=blRange(1)),find(timeTF<blRange(2)));
-            logS = log10(dataOut{i}.STF);
-            blPower = mean(logS(blPosTF,:),1);
-            logSBL = repmat(blPower,length(timeTF),1);
-
-            deltaTF = 10*(logS - logSBL);
-            pcolor(hTFPlots(i),timeTF,dataOut{i}.freqTF,deltaTF');
+            pcolor(hTFPlots(i),dataOut{i}.timeTF,dataOut{i}.freqTF,dataOut{i}.deltaTF');
             shading(hTFPlots(i),'interp');
 
             % PSD
@@ -405,10 +423,14 @@ colorNames = jet(numProtocols);
             plot(hPSDPlots(numPlots),dataOut{i}.freqST,log10(dataOut{i}.SST),'color',plotColor);
 
             % DeltaPSD
-            plot(hDeltaPSDPlots(i),dataOut{i}.freqBL,10*(log10(dataOut{i}.SST) - log10(dataOut{i}.SBL)),'color',plotColor);
-            plot(hDeltaPSDPlots(numPlots),dataOut{i}.freqBL,10*(log10(dataOut{i}.SST) - log10(dataOut{i}.SBL)),'color',plotColor);
+            plot(hDeltaPSDPlots(i),dataOut{i}.freqBL,dataOut{i}.deltaPSD,'color',plotColor);
+            hold(hDeltaPSDPlots(i),'on');
+            plot(hDeltaPSDPlots(i),dataOut{i}.freqBL,zeros(1,length(dataOut{i}.freqBL)),'color','k','linestyle','--');
+
+            plot(hDeltaPSDPlots(numPlots),dataOut{i}.freqBL,dataOut{i}.deltaPSD,'color',plotColor);
             hold(hDeltaPSDPlots(numPlots),'on');
         end
+        plot(hDeltaPSDPlots(numPlots),dataOut{i}.freqBL,zeros(1,length(dataOut{i}.freqBL)),'color','k','linestyle','--');
 
         % Rescale
         rescaleData(hSpikePlots,stimRange,getYLims(hSpikePlots));
@@ -422,7 +444,13 @@ colorNames = jet(numProtocols);
         rescaleData(hPSDPlots,fftRange,getYLims(hPSDPlots));
         rescaleData(hDeltaPSDPlots,fftRange,getYLims(hDeltaPSDPlots));
 
-        showElectrodeLocations(electrodeGridPos,channelNumber,plotColor,hElectrodes,holdOnState,0,gridType,subjectName,gridLayout);
+        if channelPos<=length(analogChannelsStored)
+            channelNumber = analogChannelsStored(channelPos);
+            showElectrodeLocations(electrodeGridPos,channelNumber,'b',hElectrodes,holdOnState,0,gridType,subjectName,gridLayout);
+        elseif strncmpi(channelString0,'goodLFP',7) % Good LFP Electrodes
+            showElectrodeLocations(electrodeGridPos,goodLFPElectrodes,'b',hElectrodes,holdOnState,0,gridType,subjectName,gridLayout);
+        end
+        
     end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function rescaleZ_Callback(~,~)
@@ -594,7 +622,7 @@ end
         str = num2str(num/f);
     end
 end
-function [outString,outArray] = getAnalogStringFromValues(analogChannelsStored,analogInputNums)
+function [outString,outArray] = getAnalogStringFromValues(analogChannelsStored,analogInputNums,goodLFPElectrodes)
 outString='';
 count=1;
 for i=1:length(analogChannelsStored)
@@ -608,6 +636,11 @@ if ~isempty(analogInputNums)
         outString = cat(2,outString,[outArray{count} '|']);
         count=count+1;
     end
+end
+if ~isempty(goodLFPElectrodes)
+    str = ['goodLFPElectrodes (N=' num2str(length(goodLFPElectrodes)) ')'];
+    outArray{count} = str;
+    outString = cat(2,outString,str);
 end
 end
 % function outString = getNeuralStringFromValues(neuralChannelsStored,SourceUnitIDs)
@@ -740,7 +773,7 @@ frValsMatrix = zeros(numProtocols,length(dataIn{1}.frVals));
 for i=1:numProtocols
     frValsMatrix(i,:) = dataIn{i}.frVals;
 end
-maxFRVal = max(frValsMatrix(:));
+maxFRVal = max(1,max(frValsMatrix(:))); % no normalization if max firing rate is less than 1
 
 for i=1:numProtocols
     dataOut{i}.frVals = dataIn{i}.frVals/maxFRVal;
