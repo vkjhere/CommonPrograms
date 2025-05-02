@@ -29,6 +29,7 @@ end
 params.tapers   = tapers;
 params.pad      = -1;
 params.Fs       = Fs;
+params.fpass    = [0 250];
 params.trialave = 1;  % Averaging across trials
 
 % ranges
@@ -42,20 +43,14 @@ stPos = find(timeVals>=stRange(1),1)+ (1:rangePos);
 [dataOut.SST,dataOut.freqST] = mtspectrumc(signal(:,stPos)',params);
 
 % Time-frequency data
-[STF,timeTF,dataOut.freqTF] = mtspecgramc(signal',movingWin,params);
-timeTF = timeTF+timeVals(1)-1/Fs;
-
-% Change in power from baseline
-blPosTF = intersect(find(timeTF>=blRange(1)),find(timeTF<blRange(2)));
-logS = log10(STF);
-blPower = mean(logS(blPosTF,:),1);
-logSBL = repmat(blPower,length(timeTF),1);
-
-dataOut.timeTF = timeTF;
-dataOut.STF = STF;
-dataOut.deltaTF = 10*(log10(STF) - logSBL);
+[dataOut.STF,timeTF,dataOut.freqTF] = mtspecgramc(signal',movingWin,params);
+dataOut.timeTF = timeTF+timeVals(1)-1/Fs;
 
 % Spike data
 dataOut.raster = dataIn.spikeData(goodPos);
 [dataOut.frVals,dataOut.frTimeVals] = getPSTH(dataIn.spikeData(goodPos),10,[timeVals(1) timeVals(end)]);
+
+% Information about the ranges
+dataOut.blRange = blRange;
+dataOut.stRange = stRange;
 end

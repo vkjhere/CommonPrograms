@@ -256,6 +256,10 @@ hZMax = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
     'Position',[timingTextWidth+timingBoxWidth 1-8*timingHeight timingBoxWidth timingHeight], ...
     'Style','edit','String','1','FontSize',fontSizeSmall);
 
+hNormalize = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
+    'BackgroundColor', backgroundColor, ...
+    'Position',[0 1-9*timingHeight 1 timingHeight], ...
+    'Style','togglebutton','String','Normalize','FontSize',fontSizeMedium);
 hRemoveERP = uicontrol('Parent',hTimingPanel,'Unit','Normalized', ...
     'BackgroundColor', backgroundColor, ...
     'Position',[0 1-10*timingHeight 1 timingHeight], ...
@@ -269,15 +273,15 @@ hPlotOptionsPanel = uipanel('Title','Plotting Options','fontSize', fontSizeLarge
     'Unit','Normalized','Position',[plotOptionsStartPos panelStartHeight plotOptionsPanelWidth panelHeight]);
 
 % Button for Plotting
-[colorString, colorNames] = getColorString;
-uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
-    'Position',[0 1-plotOptionsHeight 0.6 plotOptionsHeight], ...
-    'Style','text','String','Color','FontSize',fontSizeSmall);
-
-hChooseColor = uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
-    'BackgroundColor', backgroundColor, ...
-    'Position',[0.6 1-plotOptionsHeight 0.4 plotOptionsHeight], ...
-    'Style','popup','String',colorString,'FontSize',fontSizeSmall);
+% [colorString, colorNames] = getColorString;
+% uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
+%     'Position',[0 1-plotOptionsHeight 0.6 plotOptionsHeight], ...
+%     'Style','text','String','Color','FontSize',fontSizeSmall);
+% 
+% hChooseColor = uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
+%     'BackgroundColor', backgroundColor, ...
+%     'Position',[0.6 1-plotOptionsHeight 0.4 plotOptionsHeight], ...
+%     'Style','popup','String',colorString,'FontSize',fontSizeSmall);
 
 uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
     'Position',[0 5*plotOptionsHeight 1 plotOptionsHeight], ...
@@ -315,20 +319,21 @@ uicontrol('Parent',hPlotOptionsPanel,'Unit','Normalized', ...
 % Get electrode array information
 electrodeGridPos = [staticStartPos panelStartHeight staticPanelWidth panelHeight];
 hElectrodes = showElectrodeLocations(electrodeGridPos,analogChannelsStored(get(hAnalogChannel,'val')), ...
-    colorNames(get(hChooseColor,'val')),[],1,0,gridType,subjectName,gridLayout);
+    'b',[],1,0,gridType,subjectName,gridLayout);
 
 uicontrol('Unit','Normalized','Position',[0 0.975 1 0.025],...
     'Style','text','String',[subjectName expDate],'FontSize',fontSizeLarge);
 
 % Plot handles
 numProtocols   = length(protocolNames);
-hSpikePlots    = getPlotHandles(1,numProtocols,[0.025 0.5 0.95 0.1],0.002);
-hERPPlots      = getPlotHandles(1,numProtocols,[0.025 0.4 0.95 0.1],0.002);
-hTFPlots       = getPlotHandles(1,numProtocols,[0.025 0.3 0.95 0.1],0.002);
-hPSDPlots      = getPlotHandles(1,numProtocols,[0.025 0.15 0.95 0.1],0.002);
-hDeltaPSDPlots = getPlotHandles(1,numProtocols,[0.025 0.05 0.95 0.1],0.002);
+numPlots       = numProtocols+1;
+hSpikePlots    = getPlotHandles(1,numPlots,[0.025 0.5 0.95 0.1],0.002);
+hERPPlots      = getPlotHandles(1,numPlots,[0.025 0.4 0.95 0.1],0.002);
+hTFPlots       = getPlotHandles(1,numPlots,[0.025 0.3 0.95 0.1],0.002);
+hPSDPlots      = getPlotHandles(1,numPlots,[0.025 0.15 0.95 0.1],0.002);
+hDeltaPSDPlots = getPlotHandles(1,numPlots,[0.025 0.05 0.95 0.1],0.002);
 
-colormap jet
+colorNames = jet(numProtocols);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % functions
     function plotData_Callback(~,~)
@@ -341,6 +346,7 @@ colormap jet
         t=get(hTemporalFreq,'val');
         
         channelNumber = analogChannelsStored(get(hAnalogChannel,'val'));
+        normalizeFlag = get(hNormalize,'val');
         removeERPFlag = get(hRemoveERP,'val');
         referenceChannelString = referenceChannelStringArray{get(hReferenceChannel,'val')};
 
@@ -350,7 +356,7 @@ colormap jet
         blRange = [str2double(get(hBaselineMin,'String')) str2double(get(hBaselineMax,'String'))];
         stRange = [str2double(get(hStimPeriodMin,'String')) str2double(get(hStimPeriodMax,'String'))];
 
-        plotColor = colorNames(get(hChooseColor,'val'));
+        % plotColor = colorNames(get(hChooseColor,'val'));
         holdOnState = get(hHoldOn,'val');
         
         % Get all Data
@@ -360,25 +366,48 @@ colormap jet
             dataOut{i} = getDataGRF(dataIn,a,e,s,f,o,c,t,blRange,stRange,removeERPFlag);
         end
 
+        if normalizeFlag
+            dataOut = normalizeData(dataOut);
+        end
+
         % Plot Data
         for i=1:numProtocols
+            plotColor = colorNames(i,:);
+
             % Spikes
             plot(hSpikePlots(i),dataOut{i}.frTimeVals,dataOut{i}.frVals,'color',plotColor);
+            plot(hSpikePlots(numPlots),dataOut{i}.frTimeVals,dataOut{i}.frVals,'color',plotColor);
+            hold(hSpikePlots(numPlots),'on');
 
             % ERP
             plot(hERPPlots(i),dataOut{i}.timeVals,dataOut{i}.erp,'color',plotColor);
+            plot(hERPPlots(numPlots),dataOut{i}.timeVals,dataOut{i}.erp,'color',plotColor);
+            hold(hERPPlots(numPlots),'on');
 
-            % TF
-            pcolor(hTFPlots(i),dataOut{i}.timeTF,dataOut{i}.freqTF,dataOut{i}.deltaTF');
+            % deltaTF
+            timeTF = dataOut{i}.timeTF;
+            % Change in power from baseline
+            blPosTF = intersect(find(timeTF>=blRange(1)),find(timeTF<blRange(2)));
+            logS = log10(dataOut{i}.STF);
+            blPower = mean(logS(blPosTF,:),1);
+            logSBL = repmat(blPower,length(timeTF),1);
+
+            deltaTF = 10*(logS - logSBL);
+            pcolor(hTFPlots(i),timeTF,dataOut{i}.freqTF,deltaTF');
             shading(hTFPlots(i),'interp');
 
             % PSD
             plot(hPSDPlots(i),dataOut{i}.freqBL,log10(dataOut{i}.SBL),'color','k','linestyle','--');
             hold(hPSDPlots(i),'on');
             plot(hPSDPlots(i),dataOut{i}.freqST,log10(dataOut{i}.SST),'color',plotColor);
+            plot(hPSDPlots(numPlots),dataOut{i}.freqBL,log10(dataOut{i}.SBL),'color','k','linestyle','--');
+            hold(hPSDPlots(numPlots),'on');
+            plot(hPSDPlots(numPlots),dataOut{i}.freqST,log10(dataOut{i}.SST),'color',plotColor);
 
             % DeltaPSD
             plot(hDeltaPSDPlots(i),dataOut{i}.freqBL,10*(log10(dataOut{i}.SST) - log10(dataOut{i}.SBL)),'color',plotColor);
+            plot(hDeltaPSDPlots(numPlots),dataOut{i}.freqBL,10*(log10(dataOut{i}.SST) - log10(dataOut{i}.SBL)),'color',plotColor);
+            hold(hDeltaPSDPlots(numPlots),'on');
         end
 
         % Rescale
@@ -587,12 +616,12 @@ end
 %     outString = cat(2,outString,[num2str(neuralChannelsStored(i)) ', SID ' num2str(SourceUnitIDs(i)) '|']);
 % end 
 % end
-function [colorString, colorNames] = getColorString
-
-colorNames = 'brkgcmy';
-colorString = 'blue|red|black|green|cyan|magenta|yellow';
-
-end
+% function [colorString, colorNames] = getColorString
+% 
+% colorNames = 'brkgcmy';
+% colorString = 'blue|red|black|green|cyan|magenta|yellow';
+% 
+% end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%c%%%%%%%%%
 % load Data
 function [analogChannelsStored,timeVals,analogInputNums] = loadLFPInfo(subjectName,expDate,protocolNames,folderSourceString,gridType)
@@ -698,5 +727,22 @@ if ~isfield(p,'parameterCombinations2') % Not a plaid stimulus
 else
     [parameterCombinations,aValsUnique,eValsUnique,sValsUnique,...
         fValsUnique,oValsUnique,cValsUnique,tValsUnique] = makeCombinedParameterCombinations(folderExtract,sideChoice);
+end
+end
+function dataOut = normalizeData(dataIn)
+
+numProtocols = length(dataIn);
+dataOut = dataIn;
+
+% Normalize Firing rate
+frValsMatrix = zeros(numProtocols,length(dataIn{1}.frVals));
+
+for i=1:numProtocols
+    frValsMatrix(i,:) = dataIn{i}.frVals;
+end
+maxFRVal = max(frValsMatrix(:));
+
+for i=1:numProtocols
+    dataOut{i}.frVals = dataIn{i}.frVals/maxFRVal;
 end
 end
